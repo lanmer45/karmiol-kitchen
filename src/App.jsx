@@ -63,7 +63,7 @@ const RECIPES=[
 ];
 
 const CATS=[...new Set(RECIPES.map(r=>r.category))];
-const API="http://localhost:3001/api";
+const API="/api";
 const aGet=async p=>{try{const r=await fetch(API+p);return r.ok?r.json():null}catch{return null}};
 const aPost=async(p,b)=>{try{const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return r.ok?r.json():null}catch{return null}};
 const aDel=async p=>{try{const r=await fetch(API+p,{method:"DELETE"});return r.ok}catch{return false}};
