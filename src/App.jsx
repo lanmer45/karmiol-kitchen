@@ -68,6 +68,25 @@ const aGet=async p=>{try{const r=await fetch(API+p);return r.ok?r.json():null}ca
 const aPost=async(p,b)=>{try{const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return r.ok?r.json():null}catch{return null}};
 const aDel=async p=>{try{const r=await fetch(API+p,{method:"DELETE"});return r.ok}catch{return false}};
 
+const SHELF={
+  "flounder":"1–2 days","cod":"1–2 days","turbot":"1–2 days","fish fillets":"1–2 days",
+  "lump crabmeat":"1–2 days","shrimp":"1–2 days","clams":"2–3 days","mussels":"1–2 days",
+  "imitation crabmeat":"3–5 days","chicken breast":"1–2 days","chicken thighs":"1–2 days",
+  "ground beef":"1–2 days","beef chuck":"3–5 days","beef pot roast":"3–5 days",
+  "pork chops":"3–5 days","lamb chops":"3–5 days","veal":"1–2 days",
+  "spinach":"3–5 days","parsley":"3–5 days","chives":"5–7 days","green onion":"5–7 days",
+  "green onions":"5–7 days","scallion":"5–7 days","scallions":"5–7 days",
+  "mushrooms":"5–7 days","asparagus":"3–4 days","broccoli":"3–5 days",
+  "zucchini":"4–5 days","eggplant":"5–7 days","tomato":"5–7 days",
+  "celery":"1–2 weeks","green pepper":"1–2 weeks","red pepper":"1–2 weeks",
+  "red cabbage":"1–2 weeks","cauliflower":"1–2 weeks","cabbage":"1–2 weeks",
+  "carrot":"3–4 weeks","heavy cream":"7–10 days","cream":"7–10 days",
+};
+const shelfLife=ing=>{
+  const key=Object.keys(SHELF).find(k=>ing.toLowerCase().includes(k.toLowerCase()));
+  return key?SHELF[key]:null;
+};
+
 const S={
   page:{minHeight:"100vh",background:C.cream,fontFamily:FB,color:C.text},
   hdr:{background:C.navyDeep,padding:"32px 32px 28px",borderBottom:`1px solid rgba(200,184,154,.12)`},
@@ -136,7 +155,7 @@ function RecipeDetail({recipe,onBack,onDelete}){
                   <li key={i} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:15}}>
                     <span style={{width:7,height:7,borderRadius:"50%",background:(recipe.perishable||[]).includes(ing)?C.warn:C.sageLight,flexShrink:0,marginTop:7}}/>
                     <span>{ing}</span>
-                    {(recipe.perishable||[]).includes(ing)&&<span style={{fontSize:10,color:C.warn,alignSelf:"center"}}>use soon</span>}
+                    {(recipe.perishable||[]).includes(ing)&&<span style={{fontSize:10,color:C.warn,alignSelf:"center"}}>{shelfLife(ing)?`use within ${shelfLife(ing)}`:"use soon"}</span>}
                   </li>
                 ))}
               </ul>
@@ -324,7 +343,7 @@ function StarDishView({recipes,starId,onChangeStar,onView}){
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:18}}>
           {[["⏰",star.cookTime+" min"],["🔥",star.calories+" cal"],["💪",star.protein+"g protein"],["🐄",star.fat+"g fat"]].map(([icon,val])=><div key={val} style={{textAlign:"center"}}><div style={{fontSize:18}}>{icon}</div><div style={{fontWeight:600,color:C.white,fontSize:15}}>{val}</div></div>)}
         </div>
-        <div><div style={{fontSize:11,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight,marginBottom:8}}>Key ingredients</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(star.ingredients||[]).slice(0,8).map(i=><span key={i} style={{background:(star.perishable||[]).includes(i)?"rgba(196,118,58,.25)":"rgba(107,143,113,.25)",color:(star.perishable||[]).includes(i)?"#f0b87a":C.sageLight,border:`1px solid ${(star.perishable||[]).includes(i)?"rgba(196,118,58,.4)":"rgba(107,143,113,.4)"}`,borderRadius:20,padding:"3px 12px",fontSize:13}}>{i}{(star.perishable||[]).includes(i)?" 🕐":""}</span>)}</div>{(star.perishable||[]).length>0&&<div style={{fontSize:12,color:C.slateLight,marginTop:8,fontStyle:"italic"}}>🕐 Use these soon — they're perishable</div>}</div>
+        <div><div style={{fontSize:11,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight,marginBottom:8}}>Key ingredients</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(star.ingredients||[]).slice(0,8).map(i=><span key={i} style={{background:(star.perishable||[]).includes(i)?"rgba(196,118,58,.25)":"rgba(107,143,113,.25)",color:(star.perishable||[]).includes(i)?"#f0b87a":C.sageLight,border:`1px solid ${(star.perishable||[]).includes(i)?"rgba(196,118,58,.4)":"rgba(107,143,113,.4)"}`,borderRadius:20,padding:"3px 12px",fontSize:13}}>{i}{(star.perishable||[]).includes(i)?" 🕐":""}</span>)}</div>{(star.perishable||[]).length>0&&<div style={{fontSize:12,color:C.slateLight,marginTop:8,fontStyle:"italic"}}>🕐 {(star.perishable||[]).map(p=>shelfLife(p)?`${p} (${shelfLife(p)})`:p).join(" · ")}</div>}</div>
       </div>
       {overlaps.length>0&&<div><div style={{fontFamily:FD,fontSize:22,fontWeight:600,color:C.navyDeep,marginBottom:6}}>Reduce Waste This Week</div><div style={{fontSize:14,color:C.textMid,marginBottom:16}}>These share ingredients with your star dish — perishables prioritized first.</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>{overlaps.map(r=><div key={r.id} onClick={()=>onView(r)} style={S.card} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(44,62,80,.15)"}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 12px rgba(44,62,80,.08)"}}><div style={{padding:"14px 16px"}}><div style={{fontSize:10,textTransform:"uppercase",letterSpacing:2,color:C.slateLight,marginBottom:4}}>{r.category}</div><div style={{fontFamily:FD,fontSize:16,fontWeight:600,color:C.navyDeep,marginBottom:8}}>{r.name}</div><div style={{display:"flex",gap:10,fontSize:13,color:C.textMid,marginBottom:8}}><span style={{color:r.cookTime<=30?C.sageDark:C.textMid,fontWeight:600}}>⏰ {r.cookTime} min</span><span>🔥 {r.calories} cal</span></div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{r.shared.slice(0,4).map(i=><span key={i} style={{...S.tag(r.perishableShared.includes(i)?"warn":"sage"),fontSize:11}}>{i}</span>)}{r.shared.length>4&&<span style={{...S.tag(),fontSize:11}}>+{r.shared.length-4} more</span>}</div></div></div>)}</div></div>}
     </div>
