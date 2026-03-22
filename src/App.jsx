@@ -129,11 +129,11 @@ function RecipeDetail({recipe,onBack,onDelete}){
     <div>
       <button onClick={onBack} style={{...S.btn("ghost"),marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Back</button>
       <div style={{background:C.white,borderRadius:18,overflow:"hidden",boxShadow:"0 4px 24px rgba(44,62,80,.10)",border:`1px solid ${C.slatePale}`}}>
-        {recipe.image&&<div style={{height:280,overflow:"hidden",background:C.slatePale}}><img src={recipe.image} alt={recipe.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>e.currentTarget.parentElement.style.display="none"}/></div>}
-        <div style={{padding:"28px 28px 32px"}}>
+        {recipe.image&&<div style={{height:280,overflow:"hidden",background:C.slatePale}} className="recipe-hero"><img src={recipe.image} alt={recipe.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>e.currentTarget.parentElement.style.display="none"}/></div>}
+        <div style={{padding:"28px 28px 32px"}} className="recipe-card-body">
           <div style={{marginBottom:20}}>
             <div style={{fontSize:11,textTransform:"uppercase",letterSpacing:2,color:C.slateLight,marginBottom:8}}>{recipe.category}</div>
-            <div style={{fontFamily:FD,fontSize:32,fontWeight:600,color:C.navyDeep,lineHeight:1.15,marginBottom:12}}>{recipe.name}</div>
+            <div style={{fontFamily:FD,fontSize:32,fontWeight:600,color:C.navyDeep,lineHeight:1.15,marginBottom:12}} className="recipe-name">{recipe.name}</div>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               {recipe.serves&&<span style={S.tag("slate")}>Serves {recipe.serves}</span>}
               {recipe.planAhead&&<span style={S.tag("warn")}>📌 Plan ahead</span>}
@@ -149,7 +149,7 @@ function RecipeDetail({recipe,onBack,onDelete}){
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:28}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:28}} className="recipe-2col">
             <div>
               <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep,marginBottom:14,borderBottom:`2px solid ${C.slatePale}`,paddingBottom:8}}>Ingredients</div>
               <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:8}}>
@@ -897,25 +897,25 @@ export default function App(){
 
   return(
     <div style={S.page}>
-      <div style={S.hdr}>
-        <div style={{maxWidth:800,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}}>
+      <div style={S.hdr} className="hdr-pad">
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}} className="hdr-inner">
           <div style={{display:"flex",alignItems:"baseline",gap:12}}>
             <div style={{fontFamily:FD,fontSize:26,fontWeight:700,color:C.white,letterSpacing:.5,lineHeight:1}}>Karmiol Kitchen</div>
             <div style={{width:6,height:6,borderRadius:"50%",background:C.gold,marginBottom:2,flexShrink:0}}/>
           </div>
-          <div style={{display:"flex",gap:10}}>
+          <div style={{display:"flex",gap:10}} className="hdr-buttons">
             <button onClick={()=>setImporting(true)} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:"transparent",border:`1px solid rgba(200,184,154,.35)`,color:C.goldLight,transition:"all .2s",letterSpacing:.3}}>+ Import Recipe</button>
             <button onClick={()=>setView({type:"add"})} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:C.gold,border:"none",color:C.navyDeep,transition:"all .2s",letterSpacing:.3}}>+ Add Recipe</button>
           </div>
         </div>
       </div>
       <div style={S.nav}>
-        <div style={{maxWidth:800,margin:"0 auto",display:"flex",overflowX:"auto"}}>
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",overflowX:"auto"}} className="tab-nav">
           {TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setView(null);}} style={{padding:"14px 18px",background:"transparent",border:"none",cursor:"pointer",fontSize:13,fontFamily:FB,fontWeight:500,letterSpacing:.3,color:tab===t.id?C.white:"rgba(255,255,255,.4)",borderBottom:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent",transition:"all .2s",whiteSpace:"nowrap"}}>{t.label}</button>)}
         </div>
       </div>
       {importing&&<ImportRecipeModal onSave={s=>{setRecipes(p=>[...p,s]);setImporting(false);}} onCancel={()=>setImporting(false)}/>}
-      <div style={S.wrap}>
+      <div style={S.wrap} className="page-wrap">
         {loading?<div style={{textAlign:"center",padding:60,color:C.textLight,fontStyle:"italic",fontSize:15}}>Loading recipes…</div>:
          view?.type==="detail"?<RecipeDetail recipe={view.recipe} onBack={()=>setView(null)} onDelete={onDel}/>:
          view?.type==="add"?<AddRecipeForm onSave={onSave} onCancel={()=>setView(null)}/>:
