@@ -785,6 +785,83 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
   );
 }
 
+function CookView({recipes,weekPlan,onView}){
+  const DAYS=["Monday","Tuesday","Wednesday","Thursday","(5th)"];
+  const lookup=id=>recipes.find(r=>String(r.id)===String(id));
+
+  const planned=weekPlan
+    .map((day,slot)=>({slot,day:DAYS[slot],ids:day||[]}))
+    .filter(({ids})=>ids.length>0);
+
+  if(planned.length===0){
+    return(
+      <div style={{textAlign:"center",padding:"72px 24px"}}>
+        <div style={{fontSize:56,marginBottom:16}}>👨‍🍳</div>
+        <div style={{fontFamily:FD,fontSize:22,fontWeight:600,color:C.navyDeep,marginBottom:8}}>Nothing planned yet</div>
+        <div style={{fontSize:15,color:C.textMid}}>Add meals on the This Week tab first, then come back here to cook.</div>
+      </div>
+    );
+  }
+
+  return(
+    <div>
+      <div style={{marginBottom:28}}>
+        <div style={{fontFamily:FD,fontSize:26,fontWeight:600,color:C.navyDeep,marginBottom:4}}>Cook</div>
+        <div style={{fontSize:14,color:C.textMid}}>Tap any dish to pull up the full recipe.</div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:28}}>
+        {planned.map(({slot,day,ids})=>{
+          const mainR=lookup(ids[0]);
+          const sideRs=ids.slice(1).map(lookup).filter(Boolean);
+          return(
+            <div key={slot}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:C.slateLight,marginBottom:12}}>{day}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {mainR&&(
+                  <div onClick={()=>onView(mainR)} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"stretch"}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(44,62,80,.14)"}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 12px rgba(44,62,80,.08)"}}>
+                    <div style={{width:5,background:C.sage,flexShrink:0,borderRadius:"14px 0 0 14px"}}/>
+                    <div style={{padding:"16px 20px",flex:1}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                        <div>
+                          <div style={{fontSize:11,textTransform:"uppercase",letterSpacing:1.5,color:C.slateLight,marginBottom:4}}>{mainR.category}</div>
+                          <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep,lineHeight:1.2,marginBottom:8}}>{mainR.name}</div>
+                          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                            <span style={{fontSize:13,color:mainR.cookTime<=30?C.sageDark:mainR.cookTime<=60?C.warn:C.slate,fontWeight:600}}>⏰ {mainR.cookTime} min</span>
+                            <span style={{fontSize:13,color:C.textMid}}>🔥 {mainR.calories} cal</span>
+                            {mainR.planAhead&&<span style={S.tag("warn")}>📌 Plan ahead</span>}
+                          </div>
+                        </div>
+                        <span style={{fontSize:13,color:C.slate,fontWeight:500,whiteSpace:"nowrap",marginTop:2}}>View recipe →</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {sideRs.map(side=>(
+                  <div key={side.id} onClick={()=>onView(side)} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"stretch",marginLeft:24}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(44,62,80,.14)"}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 12px rgba(44,62,80,.08)"}}>
+                    <div style={{width:5,background:C.sageLight,flexShrink:0,borderRadius:"14px 0 0 14px"}}/>
+                    <div style={{padding:"12px 18px",flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+                      <div>
+                        <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:1.5,color:C.slateLight,marginBottom:3}}>Side · {side.category}</div>
+                        <div style={{fontFamily:FD,fontSize:16,fontWeight:600,color:C.navyDeep}}>{side.name}</div>
+                        <div style={{fontSize:12,color:C.textMid,marginTop:3}}>⏰ {side.cookTime} min · {side.calories} cal</div>
+                      </div>
+                      <span style={{fontSize:12,color:C.slate,fontWeight:500,whiteSpace:"nowrap"}}>View →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   const[recipes,setRecipes]=useState(RECIPES);
   const[tab,setTab]=useState("star");
@@ -816,7 +893,7 @@ export default function App(){
     else alert("Could not delete — is the server running?");
   },[]);
 
-  const TABS=[{id:"star",label:"📅  This Week"},{id:"quiz",label:"💬  Chat"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
+  const TABS=[{id:"star",label:"📅  This Week"},{id:"cook",label:"👨‍🍳  Cook"},{id:"quiz",label:"💬  Chat"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
 
   return(
     <div style={S.page}>
@@ -844,6 +921,7 @@ export default function App(){
          view?.type==="add"?<AddRecipeForm onSave={onSave} onCancel={()=>setView(null)}/>:
          <>
            {tab==="star"&&<WeeklyPlanView recipes={recipes} weekPlan={weekPlan} onSetPlan={setWeekPlan} onView={onView}/>}
+           {tab==="cook"&&<CookView recipes={recipes} weekPlan={weekPlan} onView={onView}/>}
            {tab==="quiz"&&<ChatView recipes={recipes} onView={onView}/>}
            {tab==="search"&&<SearchView recipes={recipes} onView={onView}/>}
            {tab==="fridge"&&<FridgeView recipes={recipes} onView={onView}/>}
