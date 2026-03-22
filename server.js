@@ -115,7 +115,7 @@ app.post("/api/import/url", async (req, res) => {
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: `Extract a recipe from the provided text and return ONLY valid JSON matching this schema exactly:
-{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names"],"ingredients":["array of ingredient strings"],"directions":["array of step strings"],"note":"string","image":""}
+{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names without quantities"],"ingredients":["array of ingredient strings WITH quantities, e.g. '2 tbsp butter' or '1 lb chicken breast'"],"directions":["array of step strings"],"note":"string","image":""}
 If nutrition is not available, estimate reasonably. Return only the JSON object, no markdown.` },
         { role: "user", content: stripped }
       ],
@@ -139,7 +139,7 @@ app.post("/api/import/photo", express.json({ limit: "10mb" }), async (req, res) 
       model: "gpt-4o",
       messages: [
         { role: "system", content: `Extract the recipe shown in this image and return ONLY valid JSON matching this schema exactly:
-{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names"],"ingredients":["array of ingredient strings"],"directions":["array of step strings"],"note":"string","image":""}
+{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names without quantities"],"ingredients":["array of ingredient strings WITH quantities, e.g. '2 tbsp butter' or '1 lb chicken breast'"],"directions":["array of step strings"],"note":"string","image":""}
 If nutrition is not visible, estimate reasonably. Return only the JSON object, no markdown.` },
         { role: "user", content: [{ type: "image_url", image_url: { url: image } }] }
       ],
