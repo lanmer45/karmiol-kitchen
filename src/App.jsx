@@ -80,7 +80,8 @@ const SHELF={
   "zucchini":"4–5 days","eggplant":"5–7 days","tomato":"5–7 days",
   "celery":"1–2 weeks","green pepper":"1–2 weeks","red pepper":"1–2 weeks",
   "red cabbage":"1–2 weeks","cauliflower":"1–2 weeks","cabbage":"1–2 weeks",
-  "carrot":"3–4 weeks","heavy cream":"7–10 days","cream":"7–10 days",
+  "carrot":"3–4 weeks","onion":"3–4 weeks","heavy cream":"7–10 days","cream":"7–10 days",
+  "vegetable juice":"7–10 days (once opened)",
 };
 const shelfLife=ing=>{
   const key=Object.keys(SHELF).find(k=>ing.toLowerCase().includes(k.toLowerCase()));
