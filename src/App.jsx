@@ -327,29 +327,6 @@ function AddRecipeForm({onSave,onCancel}){
   );
 }
 
-function StarDishView({recipes,starId,onChangeStar,onView}){
-  const star=recipes.find(r=>String(r.id)===String(starId))||recipes[0];
-  if(!star)return null;
-  const overlaps=recipes.filter(r=>String(r.id)!==String(star.id)).map(r=>{const shared=(r.ingredients||[]).filter(i=>(star.ingredients||[]).includes(i));const perishableShared=shared.filter(i=>(star.perishable||[]).includes(i));return{...r,shared,perishableShared};}).filter(r=>r.shared.length>0).sort((a,b)=>b.perishableShared.length-a.perishableShared.length||b.shared.length-a.shared.length).slice(0,4);
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,gap:12}}>
-        <div><div style={{fontFamily:FD,fontSize:28,fontWeight:600,color:C.navyDeep,marginBottom:4}}>Star Dish of the Week</div><div style={{fontSize:14,color:C.textMid}}>Set your star dish and see what else you can make with the same ingredients.</div></div>
-        <button onClick={onChangeStar} style={{...S.btn("ghost"),whiteSpace:"nowrap",flexShrink:0}}>Change dish</button>
-      </div>
-      <div onClick={()=>onView(star)} style={{background:`linear-gradient(135deg,${C.navyDeep} 0%,${C.navy} 100%)`,borderRadius:18,padding:"24px 28px",marginBottom:28,cursor:"pointer",boxShadow:"0 8px 32px rgba(26,38,52,.25)",transition:"transform .18s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform=""}>
-        {star.image&&<div style={{height:180,borderRadius:12,overflow:"hidden",marginBottom:18,background:C.navyMid}}><img src={star.image} alt={star.name} style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}} onError={e=>e.currentTarget.parentElement.style.display="none"}/></div>}
-        <div style={{fontSize:11,letterSpacing:3,textTransform:"uppercase",color:C.slateLight,marginBottom:6}}>{star.category}</div>
-        <div style={{fontFamily:FD,fontSize:28,fontWeight:600,color:C.white,lineHeight:1.15,marginBottom:16}}>{star.name}</div>
-        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:18}}>
-          {[["⏰",star.cookTime+" min"],["🔥",star.calories+" cal"],["💪",star.protein+"g protein"],["🐄",star.fat+"g fat"]].map(([icon,val])=><div key={val} style={{textAlign:"center"}}><div style={{fontSize:18}}>{icon}</div><div style={{fontWeight:600,color:C.white,fontSize:15}}>{val}</div></div>)}
-        </div>
-        <div><div style={{fontSize:11,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight,marginBottom:8}}>Key ingredients</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(star.ingredients||[]).slice(0,8).map(i=><span key={i} style={{background:(star.perishable||[]).includes(i)?"rgba(196,118,58,.25)":"rgba(107,143,113,.25)",color:(star.perishable||[]).includes(i)?"#f0b87a":C.sageLight,border:`1px solid ${(star.perishable||[]).includes(i)?"rgba(196,118,58,.4)":"rgba(107,143,113,.4)"}`,borderRadius:20,padding:"3px 12px",fontSize:13}}>{i}{(star.perishable||[]).includes(i)?" 🕐":""}</span>)}</div>{(star.perishable||[]).length>0&&<div style={{fontSize:12,color:C.slateLight,marginTop:8,fontStyle:"italic"}}>🕐 {(star.perishable||[]).map(p=>shelfLife(p)?`${p} (${shelfLife(p)})`:p).join(" · ")}</div>}</div>
-      </div>
-      {overlaps.length>0&&<div><div style={{fontFamily:FD,fontSize:22,fontWeight:600,color:C.navyDeep,marginBottom:6}}>Reduce Waste This Week</div><div style={{fontSize:14,color:C.textMid,marginBottom:16}}>These share ingredients with your star dish — perishables prioritized first.</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>{overlaps.map(r=><div key={r.id} onClick={()=>onView(r)} style={S.card} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(44,62,80,.15)"}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 12px rgba(44,62,80,.08)"}}><div style={{padding:"14px 16px"}}><div style={{fontSize:10,textTransform:"uppercase",letterSpacing:2,color:C.slateLight,marginBottom:4}}>{r.category}</div><div style={{fontFamily:FD,fontSize:16,fontWeight:600,color:C.navyDeep,marginBottom:8}}>{r.name}</div><div style={{display:"flex",gap:10,fontSize:13,color:C.textMid,marginBottom:8}}><span style={{color:r.cookTime<=30?C.sageDark:C.textMid,fontWeight:600}}>⏰ {r.cookTime} min</span><span>🔥 {r.calories} cal</span></div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{r.shared.slice(0,4).map(i=><span key={i} style={{...S.tag(r.perishableShared.includes(i)?"warn":"sage"),fontSize:11}}>{i}</span>)}{r.shared.length>4&&<span style={{...S.tag(),fontSize:11}}>+{r.shared.length-4} more</span>}</div></div></div>)}</div></div>}
-    </div>
-  );
-}
 
 function ChatView({recipes,onView}){
   const GREET="Hey! Tell me what sounds good tonight — how much time you have, what you're in the mood for, ingredients on hand, anything. I'll find the right recipe.";
@@ -572,17 +549,144 @@ function PairingsView({recipes,onView}){
   );
 }
 
-function StarPicker({recipes,onPick,onClose}){
+function MealPicker({recipes,exclude,onPick,onClose}){
   const[q,setQ]=useState("");
-  const f=recipes.filter(r=>!q||r.name.toLowerCase().includes(q.toLowerCase())||r.category.toLowerCase().includes(q.toLowerCase()));
+  const f=recipes.filter(r=>!exclude.includes(String(r.id))&&(!q||r.name.toLowerCase().includes(q.toLowerCase())||r.category.toLowerCase().includes(q.toLowerCase())));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(26,38,52,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}}>
       <div style={{background:C.cream,borderRadius:20,padding:24,maxWidth:480,width:"100%",maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px rgba(26,38,52,.35)"}}>
-        <div style={{fontFamily:FD,fontSize:22,fontWeight:600,color:C.navyDeep,marginBottom:16}}>Choose Your Star Dish</div>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" style={{...S.inp,marginBottom:12}}/>
-        <div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:8,flex:1}}>{f.map(r=><button key={r.id} onClick={()=>{onPick(r.id);onClose();}} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${C.slatePale}`,background:C.white,textAlign:"left",cursor:"pointer",fontSize:14,color:C.navyDeep,fontFamily:FB,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.slatePale;e.currentTarget.style.borderColor=C.slateLight}} onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.slatePale}}><span style={{fontWeight:600}}>{r.name}</span><span style={{fontSize:12,color:C.textLight,marginLeft:8}}>{r.category}</span></button>)}</div>
+        <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep,marginBottom:14}}>Pick a meal</div>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search recipes…" style={{...S.inp,marginBottom:12}} autoFocus/>
+        <div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:6,flex:1}}>{f.map(r=><button key={r.id} onClick={()=>{onPick(r.id);onClose();}} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${C.slatePale}`,background:C.white,textAlign:"left",cursor:"pointer",fontSize:14,color:C.navyDeep,fontFamily:FB,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.slatePale}} onMouseLeave={e=>{e.currentTarget.style.background=C.white}}><span style={{fontWeight:600}}>{r.name}</span><span style={{fontSize:12,color:C.textLight,marginLeft:8}}>{r.category}</span></button>)}</div>
         <button onClick={onClose} style={{...S.btn("ghost"),marginTop:14}}>Cancel</button>
       </div>
+    </div>
+  );
+}
+
+const catIngredient=ing=>{
+  const lo=ing.toLowerCase();
+  if(/spinach|mushroom|tomato|celery|parsley|onion|garlic|pepper|zucchini|broccoli|cauliflower|asparagus|eggplant|carrot|cabbage|lettuce|leek|chiv|scallion|herb|lemon|lime|apple|artichoke|avocado|kale|potato|turnip|kohlrabi|pea|corn|bean|raisin|red onion|green onion/.test(lo))return"produce";
+  if(/chicken|beef|pork|lamb|veal|turkey|duck|shrimp|fish|salmon|tuna|cod|flounder|turbot|crab|lobster|clam|mussel|scallop|anchov|bacon|sausage|ground/.test(lo))return"meat";
+  if(/butter|cream|egg|cheese|milk|yogurt|sour cream|ricotta|mozzarella|parmesan|cheddar|roquefort|half and half|half-and-half|jack|gruy|mascarpone/.test(lo))return"dairy";
+  return"pantry";
+};
+
+function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
+  const[pickerSlot,setPickerSlot]=useState(null);
+  const[copied,setCopied]=useState(false);
+  const DAYS=["Monday","Tuesday","Wednesday","Thursday","(Optional 5th)"];
+  const filledCount=weekPlan.filter(Boolean).length;
+  const show5=weekPlan.length>=5||filledCount>=4;
+  const slots=[0,1,2,3,...(show5?[4]:[])];
+  const getMeal=id=>id?recipes.find(r=>String(r.id)===String(id)):null;
+  const meals=weekPlan.map(getMeal).filter(Boolean);
+  const star=getMeal(weekPlan[0]);
+  const exclude=weekPlan.filter(Boolean).map(String);
+
+  const suggestions=star?recipes
+    .filter(r=>!exclude.includes(String(r.id)))
+    .map(r=>{const shared=(r.ingredients||[]).filter(i=>(star.ingredients||[]).includes(i));return{...r,shared};})
+    .filter(r=>r.shared.length>1)
+    .sort((a,b)=>b.shared.length-a.shared.length)
+    .slice(0,6):[];
+
+  const allIngredients=[...new Set(meals.flatMap(r=>r.ingredients||[]).map(i=>i.toLowerCase().trim()))];
+  const grouped={produce:[],meat:[],dairy:[],pantry:[]};
+  allIngredients.forEach(ing=>grouped[catIngredient(ing)].push(ing));
+
+  const setMeal=(slot,id)=>{const p=[...weekPlan];while(p.length<=slot)p.push(null);p[slot]=id;onSetPlan(p);setPickerSlot(null);};
+  const removeMeal=slot=>{const p=[...weekPlan];p[slot]=null;while(p.length&&!p[p.length-1])p.pop();onSetPlan(p);};
+  const addSuggestion=id=>{const idx=weekPlan.findIndex(x=>!x);if(idx>=0)setMeal(idx,id);else if(weekPlan.length<5)setMeal(weekPlan.length,id);};
+
+  const copyList=()=>{
+    const text=[["PRODUCE",grouped.produce],["MEAT & SEAFOOD",grouped.meat],["DAIRY & EGGS",grouped.dairy],["PANTRY",grouped.pantry]]
+      .filter(([,items])=>items.length>0).map(([title,items])=>`${title}\n${items.join("\n")}`).join("\n\n");
+    navigator.clipboard.writeText(text);
+    setCopied(true);setTimeout(()=>setCopied(false),2500);
+  };
+
+  return(
+    <div>
+      <div style={{marginBottom:24}}>
+        <div style={{fontFamily:FD,fontSize:26,fontWeight:600,color:C.navyDeep,marginBottom:4}}>This Week</div>
+        <div style={{fontSize:14,color:C.textMid}}>Mon – Thu dinners. Set a star dish and we'll suggest meals that share ingredients to cut waste.</div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:12,marginBottom:28}}>
+        {slots.map(slot=>{
+          const meal=getMeal(weekPlan[slot]);
+          const isStar=slot===0;
+          return(
+            <div key={slot} style={{borderRadius:12,border:`1.5px solid ${meal?C.slatePale:"#e5e5e5"}`,background:meal?C.white:"#fafafa",padding:"14px 16px",minHeight:120,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                  <span style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight}}>{DAYS[slot]}</span>
+                  {isStar&&<span style={{fontSize:10,background:"rgba(200,184,154,.18)",color:C.gold,border:`1px solid rgba(200,184,154,.4)`,borderRadius:10,padding:"1px 7px",fontWeight:600,letterSpacing:.5}}>star</span>}
+                </div>
+                {meal?(
+                  <>
+                    <div onClick={()=>onView(meal)} style={{fontSize:13,fontWeight:600,color:C.navyDeep,lineHeight:1.35,marginBottom:4,cursor:"pointer"}}>{meal.name}</div>
+                    <div style={{fontSize:11,color:C.textLight,marginBottom:10}}>{meal.category} · ⏰ {meal.cookTime} min</div>
+                  </>
+                ):(
+                  <div style={{height:40}}/>
+                )}
+              </div>
+              {meal?(
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>setPickerSlot(slot)} style={{...S.btn("ghost"),fontSize:11,padding:"4px 10px"}}>Change</button>
+                  <button onClick={()=>removeMeal(slot)} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:`1px solid #e5e5e5`,background:"transparent",cursor:"pointer",color:C.textLight}}>✕</button>
+                </div>
+              ):(
+                <button onClick={()=>setPickerSlot(slot)} style={{width:"100%",padding:"10px 0",borderRadius:8,border:`1.5px dashed ${C.slatePale}`,background:"transparent",cursor:"pointer",fontSize:13,color:C.slateLight}}>+ Pick a meal</button>
+              )}
+            </div>
+          );
+        })}
+        {!show5&&filledCount>0&&(
+          <div style={{borderRadius:12,border:`1.5px dashed #e5e5e5`,background:"transparent",padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <button onClick={()=>{const p=[...weekPlan];while(p.length<5)p.push(null);onSetPlan(p);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.slateLight}}>+ 5th meal</button>
+          </div>
+        )}
+      </div>
+
+      {star&&meals.length<5&&suggestions.length>0&&(
+        <div style={{marginBottom:28}}>
+          <div style={{fontSize:12,fontWeight:600,letterSpacing:1,textTransform:"uppercase",color:C.slateLight,marginBottom:10}}>Pairs well with your star — shares ingredients</div>
+          <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
+            {suggestions.map(r=>(
+              <div key={r.id} style={{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:10,padding:"12px 14px",minWidth:190,flexShrink:0,display:"flex",flexDirection:"column",gap:4}}>
+                <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:1.5,color:C.slateLight}}>{r.category}</div>
+                <div style={{fontSize:13,fontWeight:600,color:C.navyDeep,lineHeight:1.3}}>{r.name}</div>
+                <div style={{fontSize:11,color:C.textMid,marginBottom:6}}>{r.shared.length} shared ingredient{r.shared.length>1?"s":""}</div>
+                <button onClick={()=>addSuggestion(r.id)} style={{...S.btn("sage"),fontSize:11,padding:"5px 12px",alignSelf:"flex-start"}}>+ Add to week</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {meals.length>0&&(
+        <div style={{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:14,padding:"20px 24px"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+            <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep}}>Grocery List</div>
+            <button onClick={copyList} style={{...S.btn(copied?"sage":"ghost"),fontSize:13,padding:"7px 16px",transition:"all .2s"}}>{copied?"✓ Copied!":"Copy list"}</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:20}}>
+            {[["Produce",grouped.produce,C.sage],["Meat & Seafood",grouped.meat,C.warn],["Dairy & Eggs",grouped.dairy,C.slate],["Pantry",grouped.pantry,C.stone]].filter(([,items])=>items.length>0).map(([title,items,color])=>(
+              <div key={title}>
+                <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color,marginBottom:8,borderBottom:`1px solid ${C.slatePale}`,paddingBottom:6}}>{title}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {items.map(ing=><div key={ing} style={{fontSize:13,color:C.text,display:"flex",alignItems:"center",gap:6}}><span style={{color:C.slatePale,fontSize:10}}>—</span>{ing}</div>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pickerSlot!==null&&<MealPicker recipes={recipes} exclude={exclude} onPick={id=>setMeal(pickerSlot,id)} onClose={()=>setPickerSlot(null)}/>}
     </div>
   );
 }
@@ -590,8 +694,8 @@ function StarPicker({recipes,onPick,onClose}){
 export default function App(){
   const[recipes,setRecipes]=useState(RECIPES);
   const[tab,setTab]=useState("star");
-  const[starId,setStarId]=useState(RECIPES[9].id);
-  const[picker,setPicker]=useState(false);
+  const[weekPlan,setWeekPlanRaw]=useState(()=>{try{return JSON.parse(localStorage.getItem("weekPlan"))||[String(RECIPES[9].id)];}catch{return[String(RECIPES[9].id)];}});
+  const setWeekPlan=p=>{setWeekPlanRaw(p);try{localStorage.setItem("weekPlan",JSON.stringify(p));}catch{}};
   const[view,setView]=useState(null);
   const[loading,setLoading]=useState(true);
   const[importing,setImporting]=useState(false);
@@ -614,7 +718,7 @@ export default function App(){
     else alert("Could not delete — is the server running?");
   },[]);
 
-  const TABS=[{id:"star",label:"⭐  Star Dish"},{id:"quiz",label:"💬  Chat"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
+  const TABS=[{id:"star",label:"📅  This Week"},{id:"quiz",label:"💬  Chat"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
 
   return(
     <div style={S.page}>
@@ -641,14 +745,13 @@ export default function App(){
          view?.type==="detail"?<RecipeDetail recipe={view.recipe} onBack={()=>setView(null)} onDelete={onDel}/>:
          view?.type==="add"?<AddRecipeForm onSave={onSave} onCancel={()=>setView(null)}/>:
          <>
-           {tab==="star"&&<StarDishView recipes={recipes} starId={starId} onChangeStar={()=>setPicker(true)} onView={onView}/>}
+           {tab==="star"&&<WeeklyPlanView recipes={recipes} weekPlan={weekPlan} onSetPlan={setWeekPlan} onView={onView}/>}
            {tab==="quiz"&&<ChatView recipes={recipes} onView={onView}/>}
            {tab==="search"&&<SearchView recipes={recipes} onView={onView}/>}
            {tab==="fridge"&&<FridgeView recipes={recipes} onView={onView}/>}
            {tab==="pairs"&&<PairingsView recipes={recipes} onView={onView}/>}
          </>}
       </div>
-      {picker&&<StarPicker recipes={recipes} onPick={id=>{setStarId(id);setTab("star");}} onClose={()=>setPicker(false)}/>}
     </div>
   );
 }
