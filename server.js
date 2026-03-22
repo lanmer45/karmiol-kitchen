@@ -5,6 +5,7 @@ import Database from "@replit/database";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
+import OpenAI from "openai";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -88,6 +89,66 @@ app.delete("/api/recipes/:id", async (req, res) => {
   try {
     await dbDelete(`recipe_${req.params.id}`);
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Import recipe from URL ────────────────────────────────────────────────────
+app.post("/api/import/url", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "url required" });
+  try {
+    const fetch = (await import("node-fetch")).default;
+    const html = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 10000 })
+      .then(r => r.text());
+    const stripped = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 8000);
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: `Extract a recipe from the provided text and return ONLY valid JSON matching this schema exactly:
+{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names"],"ingredients":["array of ingredient strings"],"directions":["array of step strings"],"note":"string","image":""}
+If nutrition is not available, estimate reasonably. Return only the JSON object, no markdown.` },
+        { role: "user", content: stripped }
+      ],
+      temperature: 0.2,
+    });
+    const raw = completion.choices[0].message.content.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+    const recipe = JSON.parse(raw);
+    res.json(recipe);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Import recipe from photo (base64) ─────────────────────────────────────────
+app.post("/api/import/photo", express.json({ limit: "10mb" }), async (req, res) => {
+  const { image } = req.body;
+  if (!image) return res.status(400).json({ error: "image required" });
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: `Extract the recipe shown in this image and return ONLY valid JSON matching this schema exactly:
+{"name":"string","category":"Fish & Seafood|Poultry|Meat|Vegetables & Sides|Soups|Eggs & Cheese|Other Favorites","cookTime":number,"calories":number,"fat":number,"protein":number,"carbs":number,"serves":"string","planAhead":boolean,"perishable":["array of perishable ingredient names"],"ingredients":["array of ingredient strings"],"directions":["array of step strings"],"note":"string","image":""}
+If nutrition is not visible, estimate reasonably. Return only the JSON object, no markdown.` },
+        { role: "user", content: [{ type: "image_url", image_url: { url: image } }] }
+      ],
+      temperature: 0.2,
+      max_tokens: 1500,
+    });
+    const raw = completion.choices[0].message.content.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+    const recipe = JSON.parse(raw);
+    res.json(recipe);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

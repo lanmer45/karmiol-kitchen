@@ -161,6 +161,113 @@ function RecipeDetail({recipe,onBack,onDelete}){
   );
 }
 
+function ImportRecipeModal({onSave,onCancel}){
+  const[mode,setMode]=useState("choice");
+  const[url,setUrl]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
+  const[preview,setPreview]=useState(null);
+  const fileRef=useRef(null);
+
+  const importUrl=async()=>{
+    if(!url.trim())return;
+    setErr("");setLoading(true);
+    try{
+      const r=await fetch("/api/import/url",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url.trim()})});
+      const data=await r.json();
+      if(!r.ok)throw new Error(data.error||"Import failed");
+      setPreview(data);setMode("preview");
+    }catch(e){setErr(e.message);}
+    setLoading(false);
+  };
+
+  const importPhoto=async(file)=>{
+    setErr("");setLoading(true);
+    try{
+      const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);});
+      const r=await fetch("/api/import/photo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:b64})});
+      const data=await r.json();
+      if(!r.ok)throw new Error(data.error||"Import failed");
+      setPreview(data);setMode("preview");
+    }catch(e){setErr(e.message);}
+    setLoading(false);
+  };
+
+  const save=async()=>{
+    setLoading(true);
+    const r=await fetch("/api/recipes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(preview)});
+    const saved=await r.json();
+    setLoading(false);
+    if(r.ok)onSave(saved);
+    else setErr(saved.error||"Save failed");
+  };
+
+  const overlay={position:"fixed",inset:0,background:"rgba(26,38,52,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20};
+  const modal={background:C.cream,borderRadius:16,padding:"28px 32px",maxWidth:540,width:"100%",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.3)"};
+
+  return(
+    <div style={overlay} onClick={e=>{if(e.target===e.currentTarget)onCancel();}}>
+      <div style={modal}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{fontFamily:FD,fontSize:22,fontWeight:700,color:C.navyDeep}}>Import a Recipe</div>
+          <button onClick={onCancel} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.textMid,lineHeight:1}}>✕</button>
+        </div>
+
+        {mode==="choice"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{fontSize:14,color:C.textMid,marginBottom:4}}>Paste a link to any recipe website, or upload a photo of a printed recipe.</div>
+            <div>
+              <label style={S.lbl}>Recipe URL</label>
+              <div style={{display:"flex",gap:8}}>
+                <input style={{...S.inp,flex:1}} value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&importUrl()} placeholder="https://www.allrecipes.com/recipe/..."/>
+                <button onClick={importUrl} disabled={loading||!url.trim()} style={{...S.btn("sage"),whiteSpace:"nowrap",opacity:loading||!url.trim()?.5:1}}>{loading?"Reading…":"Import"}</button>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{flex:1,height:1,background:C.slatePale}}/>
+              <span style={{fontSize:13,color:C.textLight}}>or</span>
+              <div style={{flex:1,height:1,background:C.slatePale}}/>
+            </div>
+            <div>
+              <label style={S.lbl}>Upload a photo of a recipe</label>
+              <div onClick={()=>fileRef.current?.click()} style={{border:`2px dashed ${C.slatePale}`,borderRadius:12,padding:"24px 16px",textAlign:"center",cursor:"pointer",background:C.white,transition:"border-color .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=C.slate} onMouseLeave={e=>e.currentTarget.style.borderColor=C.slatePale}>
+                {loading?<div style={{color:C.textMid,fontSize:14}}>Analyzing photo…</div>:<><div style={{fontSize:28,marginBottom:6}}>📷</div><div style={{fontSize:14,color:C.textMid}}>Click to upload a photo</div><div style={{fontSize:12,color:C.textLight,marginTop:4}}>JPG, PNG, HEIC — any recipe photo or scan</div></>}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&importPhoto(e.target.files[0])}/>
+            </div>
+            {err&&<div style={{color:"#c0392b",fontSize:13,background:"#fdecea",borderRadius:8,padding:"10px 14px"}}>{err}</div>}
+          </div>
+        )}
+
+        {mode==="preview"&&preview&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:C.slatePale,borderRadius:12,padding:"16px 20px"}}>
+              <div style={{fontWeight:700,fontSize:18,color:C.navyDeep,marginBottom:4}}>{preview.name}</div>
+              <div style={{fontSize:13,color:C.textMid,marginBottom:10}}>{preview.category} · {preview.serves} servings · {preview.cookTime} min</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                {[["🔥","cal",preview.calories],["💪","pro",preview.protein+"g"],["🐄","fat",preview.fat+"g"],["🌾","carbs",preview.carbs+"g"]].map(([ic,lb,vl])=>(
+                  <div key={lb} style={{textAlign:"center",background:C.white,borderRadius:8,padding:"8px 4px"}}>
+                    <div style={{fontSize:16}}>{ic}</div>
+                    <div style={{fontSize:13,fontWeight:600,color:C.navyDeep}}>{vl}</div>
+                    <div style={{fontSize:11,color:C.textLight}}>{lb}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{fontSize:13,color:C.textMid,marginBottom:4}}><strong>Ingredients:</strong> {(preview.ingredients||[]).slice(0,5).join(", ")}{(preview.ingredients||[]).length>5?`, +${preview.ingredients.length-5} more`:""}</div>
+              <div style={{fontSize:13,color:C.textMid}}><strong>Steps:</strong> {preview.directions?.length||0} steps</div>
+            </div>
+            {err&&<div style={{color:"#c0392b",fontSize:13,background:"#fdecea",borderRadius:8,padding:"10px 14px"}}>{err}</div>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>{setMode("choice");setPreview(null);setErr("");}} style={S.btn("ghost")}>← Try again</button>
+              <button onClick={save} disabled={loading} style={{...S.btn("sage"),opacity:loading?.6:1}}>{loading?"Saving…":"Save to Kitchen"}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AddRecipeForm({onSave,onCancel}){
   const[form,setForm]=useState({name:"",category:"",cookTime:"",calories:"",fat:"",protein:"",carbs:"",serves:"2",planAhead:false,ingredients:"",directions:"",note:"",image:""});
   const[saving,setSaving]=useState(false);
@@ -467,6 +574,7 @@ export default function App(){
   const[picker,setPicker]=useState(false);
   const[view,setView]=useState(null);
   const[loading,setLoading]=useState(true);
+  const[importing,setImporting]=useState(false);
 
   useEffect(()=>{
     (async()=>{
@@ -497,7 +605,10 @@ export default function App(){
             <div style={{fontFamily:FD,fontSize:34,fontWeight:600,color:C.white,letterSpacing:.5,lineHeight:1}}>Karmiol Kitchen</div>
             <div style={{fontSize:14,color:C.slateLight,marginTop:6,fontStyle:"italic"}}>50 family recipes · scaled for two</div>
           </div>
-          <button onClick={()=>setView({type:"add"})} style={{...S.btn("sage"),display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>+ Add Recipe</button>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setImporting(true)} style={{...S.btn("ghost"),display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:C.white,borderColor:"rgba(255,255,255,.3)"}}>📥 Import</button>
+            <button onClick={()=>setView({type:"add"})} style={{...S.btn("sage"),display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>+ Add Recipe</button>
+          </div>
         </div>
       </div>
       <div style={S.nav}>
@@ -505,6 +616,7 @@ export default function App(){
           {TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setView(null);}} style={{padding:"13px 16px",background:"transparent",border:"none",cursor:"pointer",fontSize:14,fontFamily:FB,fontWeight:tab===t.id?600:400,color:tab===t.id?C.white:C.slateLight,borderBottom:tab===t.id?`2px solid ${C.sageLight}`:"2px solid transparent",transition:"all .2s",whiteSpace:"nowrap"}}>{t.label}</button>)}
         </div>
       </div>
+      {importing&&<ImportRecipeModal onSave={s=>{setRecipes(p=>[...p,s]);setImporting(false);}} onCancel={()=>setImporting(false)}/>}
       <div style={S.wrap}>
         {loading?<div style={{textAlign:"center",padding:60,color:C.textLight,fontStyle:"italic",fontSize:15}}>Loading recipes…</div>:
          view?.type==="detail"?<RecipeDetail recipe={view.recipe} onBack={()=>setView(null)} onDelete={onDel}/>:
