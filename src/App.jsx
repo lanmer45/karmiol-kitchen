@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const C = {
-  navy:"#2c3e50",navyDeep:"#1a2634",navyMid:"#3d5166",slate:"#5b7a99",slateLight:"#8aadc4",slatePale:"#dce8f0",
+  navy:"#2c3e50",navyDeep:"#0f1923",navyMid:"#1e2f3d",slate:"#5b7a99",slateLight:"#8aadc4",slatePale:"#dce8f0",
   sage:"#6b8f71",sageDark:"#4a6b50",sagePale:"#d4e6d6",sageLight:"#a8c9ab",
   cream:"#f5f2ec",creamDeep:"#ece7dd",stone:"#c8bfb0",text:"#2a2a2a",textMid:"#5a5a5a",textLight:"#8a8a8a",white:"#ffffff",
-  warn:"#c4763a",warnPale:"#f5e6d4",
+  warn:"#c4763a",warnPale:"#f5e6d4",gold:"#c9a84c",goldLight:"#e8d08a",
 };
 const FD="'Inter','Segoe UI',system-ui,-apple-system,sans-serif";
 const FB="'Inter','Segoe UI',system-ui,-apple-system,sans-serif";
@@ -70,8 +70,8 @@ const aDel=async p=>{try{const r=await fetch(API+p,{method:"DELETE"});return r.o
 
 const S={
   page:{minHeight:"100vh",background:C.cream,fontFamily:FB,color:C.text},
-  hdr:{background:`linear-gradient(135deg,${C.navyDeep} 0%,${C.navy} 60%,${C.navyMid} 100%)`,padding:"28px 24px 24px",boxShadow:"0 4px 24px rgba(26,38,52,.35)"},
-  nav:{background:C.navyDeep,position:"sticky",top:0,zIndex:50,borderBottom:`1px solid ${C.navyMid}`,boxShadow:"0 2px 12px rgba(26,38,52,.25)"},
+  hdr:{background:C.navyDeep,padding:"32px 32px 28px",borderBottom:`1px solid rgba(201,168,76,.15)`},
+  nav:{background:C.navyDeep,position:"sticky",top:0,zIndex:50,borderBottom:`1px solid rgba(255,255,255,.06)`},
   wrap:{maxWidth:760,margin:"0 auto",padding:"28px 16px 80px"},
   card:{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 12px rgba(44,62,80,.08)",cursor:"pointer",transition:"transform .18s,box-shadow .18s"},
   btn:(v="primary")=>({padding:"10px 20px",borderRadius:8,fontSize:14,fontFamily:FB,cursor:"pointer",border:"none",transition:"all .15s",fontWeight:500,...(v==="primary"?{background:C.slate,color:C.white}:v==="sage"?{background:C.sage,color:C.white}:v==="ghost"?{background:"transparent",border:`1px solid ${C.slateLight}`,color:C.slate}:v==="danger"?{background:"#e05a4a",color:C.white}:{})}),
@@ -599,21 +599,20 @@ export default function App(){
   return(
     <div style={S.page}>
       <div style={S.hdr}>
-        <div style={{maxWidth:760,margin:"0 auto",display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}}>
-          <div>
-            <div style={{fontSize:11,letterSpacing:4,textTransform:"uppercase",color:C.slateLight,marginBottom:5}}>The</div>
-            <div style={{fontFamily:FD,fontSize:34,fontWeight:600,color:C.white,letterSpacing:.5,lineHeight:1}}>Karmiol Kitchen</div>
-            <div style={{fontSize:14,color:C.slateLight,marginTop:6,fontStyle:"italic"}}>50 family recipes · scaled for two</div>
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:12}}>
+            <div style={{fontFamily:FD,fontSize:26,fontWeight:700,color:C.white,letterSpacing:.5,lineHeight:1}}>Karmiol Kitchen</div>
+            <div style={{width:6,height:6,borderRadius:"50%",background:C.gold,marginBottom:2,flexShrink:0}}/>
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setImporting(true)} style={{...S.btn("ghost"),display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:C.white,borderColor:"rgba(255,255,255,.3)"}}>📥 Import</button>
-            <button onClick={()=>setView({type:"add"})} style={{...S.btn("sage"),display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>+ Add Recipe</button>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setImporting(true)} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:"transparent",border:`1px solid rgba(201,168,76,.4)`,color:C.goldLight,transition:"all .2s",letterSpacing:.3}}>+ Import Recipe</button>
+            <button onClick={()=>setView({type:"add"})} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:C.gold,border:"none",color:C.navyDeep,transition:"all .2s",letterSpacing:.3}}>+ Add Recipe</button>
           </div>
         </div>
       </div>
       <div style={S.nav}>
-        <div style={{maxWidth:760,margin:"0 auto",display:"flex",overflowX:"auto"}}>
-          {TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setView(null);}} style={{padding:"13px 16px",background:"transparent",border:"none",cursor:"pointer",fontSize:14,fontFamily:FB,fontWeight:tab===t.id?600:400,color:tab===t.id?C.white:C.slateLight,borderBottom:tab===t.id?`2px solid ${C.sageLight}`:"2px solid transparent",transition:"all .2s",whiteSpace:"nowrap"}}>{t.label}</button>)}
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",overflowX:"auto"}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setView(null);}} style={{padding:"14px 18px",background:"transparent",border:"none",cursor:"pointer",fontSize:13,fontFamily:FB,fontWeight:500,letterSpacing:.3,color:tab===t.id?C.white:"rgba(255,255,255,.4)",borderBottom:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent",transition:"all .2s",whiteSpace:"nowrap"}}>{t.label}</button>)}
         </div>
       </div>
       {importing&&<ImportRecipeModal onSave={s=>{setRecipes(p=>[...p,s]);setImporting(false);}} onCancel={()=>setImporting(false)}/>}
