@@ -588,7 +588,7 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
   const exclude=weekPlan.filter(Boolean).map(String);
 
   const planKey=weekPlan.filter(Boolean).sort().join(",");
-  useEffect(()=>{setGroceryList(null);setGroceryErr("");},[planKey]);
+  useEffect(()=>{setGroceryList(null);setGroceryErr("");setAiList(false);},[planKey]);
 
   const suggestions=star?recipes
     .filter(r=>!exclude.includes(String(r.id)))
@@ -601,13 +601,19 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
   const removeMeal=slot=>{const p=[...weekPlan];p[slot]=null;while(p.length&&!p[p.length-1])p.pop();onSetPlan(p);};
   const addSuggestion=id=>{const idx=weekPlan.findIndex(x=>!x);if(idx>=0)setMeal(idx,id);else if(weekPlan.length<5)setMeal(weekPlan.length,id);};
 
+  const[aiList,setAiList]=useState(false);
   const generateList=async()=>{
     setGroceryLoading(true);setGroceryErr("");
     try{
       const r=await fetch("/api/grocery-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipes:meals})});
-      if(!r.ok)throw new Error("Server error");
-      setGroceryList(await r.json());
-    }catch(e){setGroceryErr("Couldn't generate list — try again.");}
+      if(!r.ok)throw new Error("api");
+      setGroceryList(await r.json());setAiList(true);
+    }catch{
+      const all=[...new Set(meals.flatMap(r=>r.ingredients||[]).map(i=>i.toLowerCase().trim()))];
+      const fb={produce:[],meat:[],dairy:[],pantry:[]};
+      all.forEach(ing=>fb[catIngredient(ing)].push(ing));
+      setGroceryList(fb);setAiList(false);
+    }
     setGroceryLoading(false);
   };
 
@@ -685,7 +691,9 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,gap:12,flexWrap:"wrap"}}>
             <div>
               <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep}}>Grocery List</div>
-              {!groceryList&&!groceryLoading&&<div style={{fontSize:12,color:C.textLight,marginTop:2}}>Quantities included — generates in a few seconds</div>}
+              {!groceryList&&!groceryLoading&&<div style={{fontSize:12,color:C.textLight,marginTop:2}}>Sorted by category, quantities when AI is available</div>}
+              {groceryList&&!aiList&&<div style={{fontSize:12,color:C.textLight,marginTop:2}}>Categorized list — add credits to your OpenAI key for quantities</div>}
+              {groceryList&&aiList&&<div style={{fontSize:12,color:C.textLight,marginTop:2}}>AI-generated with quantities</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
               {groceryList&&<button onClick={copyList} style={{...S.btn(copied?"sage":"ghost"),fontSize:13,padding:"7px 16px"}}>{copied?"✓ Copied!":"Copy list"}</button>}
@@ -719,7 +727,7 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
           )}
           {!groceryList&&!groceryLoading&&(
             <div style={{textAlign:"center",padding:"28px 0",color:C.textLight,fontSize:14}}>
-              Hit "Build list" to get a consolidated grocery list with quantities.
+              Hit "Build list" to get your consolidated grocery list.
             </div>
           )}
         </div>
