@@ -549,13 +549,13 @@ function PairingsView({recipes,onView}){
   );
 }
 
-function MealPicker({recipes,exclude,onPick,onClose}){
+function MealPicker({recipes,exclude,onPick,onClose,title="Pick a meal"}){
   const[q,setQ]=useState("");
   const f=recipes.filter(r=>!exclude.includes(String(r.id))&&(!q||r.name.toLowerCase().includes(q.toLowerCase())||r.category.toLowerCase().includes(q.toLowerCase())));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(26,38,52,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}}>
       <div style={{background:C.cream,borderRadius:20,padding:24,maxWidth:480,width:"100%",maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px rgba(26,38,52,.35)"}}>
-        <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep,marginBottom:14}}>Pick a meal</div>
+        <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep,marginBottom:14}}>{title}</div>
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search recipes…" style={{...S.inp,marginBottom:12}} autoFocus/>
         <div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:6,flex:1}}>{f.map(r=><button key={r.id} onClick={()=>{onPick(r.id);onClose();}} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${C.slatePale}`,background:C.white,textAlign:"left",cursor:"pointer",fontSize:14,color:C.navyDeep,fontFamily:FB,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.slatePale}} onMouseLeave={e=>{e.currentTarget.style.background=C.white}}><span style={{fontWeight:600}}>{r.name}</span><span style={{fontSize:12,color:C.textLight,marginLeft:8}}>{r.category}</span></button>)}</div>
         <button onClick={onClose} style={{...S.btn("ghost"),marginTop:14}}>Cancel</button>
@@ -774,7 +774,12 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
         </div>
       )}
 
-      {picker!==null&&<MealPicker recipes={recipes} exclude={exclude} onPick={id=>picker.mode==="side"?addSide(picker.slot,id):setMain(picker.slot,id)} onClose={()=>setPicker(null)}/>}
+      {picker!==null&&<MealPicker
+        recipes={picker.mode==="side"?recipes.filter(r=>r.category==="Vegetables & Sides"):recipes}
+        exclude={exclude}
+        title={picker.mode==="side"?"Pick a side dish":"Pick a meal"}
+        onPick={id=>picker.mode==="side"?addSide(picker.slot,id):setMain(picker.slot,id)}
+        onClose={()=>setPicker(null)}/>}
     </div>
   );
 }
