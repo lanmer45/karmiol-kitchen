@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
 import OpenAI from "openai";
+import { RECIPES as SEED_RECIPES } from "./recipes-data.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -32,6 +33,21 @@ async function dbSet(key, value) {
 async function dbDelete(key) {
   return db.delete(key);
 }
+
+// ── Auto-seed built-in recipes if DB is empty ────────────────────────────────
+async function seedIfEmpty() {
+  try {
+    const keys = await dbList("recipe_");
+    if (keys.length < SEED_RECIPES.length) {
+      console.log(`DB has ${keys.length} recipes, expected ${SEED_RECIPES.length} — seeding all…`);
+      await Promise.all(SEED_RECIPES.map(r => dbSet(`recipe_${r.id}`, r)));
+      console.log("Seed complete.");
+    }
+  } catch (e) {
+    console.error("Seed error:", e.message);
+  }
+}
+seedIfEmpty();
 
 // ── GET all recipes ──────────────────────────────────────────────────────────
 app.get("/api/recipes", async (req, res) => {
