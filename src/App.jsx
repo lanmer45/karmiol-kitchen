@@ -4,7 +4,7 @@ const C = {
   navy:"#2c3e50",navyDeep:"#0f1923",navyMid:"#1e2f3d",slate:"#5b7a99",slateLight:"#8aadc4",slatePale:"#dce8f0",
   sage:"#6b8f71",sageDark:"#4a6b50",sagePale:"#d4e6d6",sageLight:"#a8c9ab",
   cream:"#f5f2ec",creamDeep:"#ece7dd",stone:"#c8bfb0",text:"#2a2a2a",textMid:"#5a5a5a",textLight:"#8a8a8a",white:"#ffffff",
-  warn:"#c4763a",warnPale:"#f5e6d4",gold:"#c9a84c",goldLight:"#e8d08a",
+  warn:"#c4763a",warnPale:"#f5e6d4",gold:"#c8b89a",goldLight:"#e2d9cc",
 };
 const FD="'Inter','Segoe UI',system-ui,-apple-system,sans-serif";
 const FB="'Inter','Segoe UI',system-ui,-apple-system,sans-serif";
@@ -70,7 +70,7 @@ const aDel=async p=>{try{const r=await fetch(API+p,{method:"DELETE"});return r.o
 
 const S={
   page:{minHeight:"100vh",background:C.cream,fontFamily:FB,color:C.text},
-  hdr:{background:C.navyDeep,padding:"32px 32px 28px",borderBottom:`1px solid rgba(201,168,76,.15)`},
+  hdr:{background:C.navyDeep,padding:"32px 32px 28px",borderBottom:`1px solid rgba(200,184,154,.12)`},
   nav:{background:C.navyDeep,position:"sticky",top:0,zIndex:50,borderBottom:`1px solid rgba(255,255,255,.06)`},
   wrap:{maxWidth:760,margin:"0 auto",padding:"28px 16px 80px"},
   card:{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 12px rgba(44,62,80,.08)",cursor:"pointer",transition:"transform .18s,box-shadow .18s"},
@@ -605,7 +605,7 @@ export default function App(){
             <div style={{width:6,height:6,borderRadius:"50%",background:C.gold,marginBottom:2,flexShrink:0}}/>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setImporting(true)} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:"transparent",border:`1px solid rgba(201,168,76,.4)`,color:C.goldLight,transition:"all .2s",letterSpacing:.3}}>+ Import Recipe</button>
+            <button onClick={()=>setImporting(true)} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:"transparent",border:`1px solid rgba(200,184,154,.35)`,color:C.goldLight,transition:"all .2s",letterSpacing:.3}}>+ Import Recipe</button>
             <button onClick={()=>setView({type:"add"})} style={{padding:"9px 18px",borderRadius:6,fontSize:13,fontFamily:FB,cursor:"pointer",fontWeight:500,background:C.gold,border:"none",color:C.navyDeep,transition:"all .2s",letterSpacing:.3}}>+ Add Recipe</button>
           </div>
         </div>
