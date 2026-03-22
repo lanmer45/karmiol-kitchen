@@ -120,7 +120,7 @@ function RecipeDetail({recipe,onBack,onDelete}){
             </div>
           </div>
           <div style={{background:`linear-gradient(135deg,${C.navyDeep},${C.navy})`,borderRadius:12,padding:"18px 20px",marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:12}}>
-            {[["⏰",recipe.cookTime+" min","Cook time"],["🔥",recipe.calories,"Calories"],["💪",recipe.protein+"g","Protein"],["🫒",recipe.fat+"g","Fat"],["🌾",recipe.carbs+"g","Carbs"]].map(([icon,val,lbl])=>(
+            {[["⏰",recipe.cookTime+" min","Cook time"],["🔥",recipe.calories,"Calories"],["💪",recipe.protein+"g","Protein"],["🐄",recipe.fat+"g","Fat"],["🌾",recipe.carbs+"g","Carbs"]].map(([icon,val,lbl])=>(
               <div key={lbl} style={{textAlign:"center"}}>
                 <div style={{fontSize:20,marginBottom:2}}>{icon}</div>
                 <div style={{fontSize:20,fontWeight:700,color:C.slateLight,fontFamily:FD}}>{val}</div>
@@ -188,7 +188,7 @@ function AddRecipeForm({onSave,onCancel}){
           <div><label style={S.lbl}>Serves</label><input style={S.inp} value={form.serves} onChange={e=>set("serves",e.target.value)} placeholder="2"/></div>
         </div>
         <div><label style={S.lbl}>Photo URL (optional)</label><input style={S.inp} value={form.image} onChange={e=>set("image",e.target.value)} placeholder="Paste an image URL from Google Photos, Imgur, etc."/>{form.image&&<img src={form.image} alt="preview" style={{marginTop:8,height:120,borderRadius:8,objectFit:"cover",border:`1px solid ${C.slatePale}`}} onError={e=>e.currentTarget.style.display="none"}/>}</div>
-        <div><label style={S.lbl}>Cook Time &amp; Nutrition</label><div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>{[["cookTime","⏰ Min"],["calories","🔥 Cal"],["protein","💪 Pro"],["fat","🫒 Fat"],["carbs","🌾 Carb"]].map(([k,l])=><div key={k}><div style={{fontSize:11,color:C.textLight,marginBottom:4}}>{l}</div><input style={{...S.inp,textAlign:"center"}} type="number" value={form[k]} onChange={e=>set(k,e.target.value)} placeholder="0"/></div>)}</div></div>
+        <div><label style={S.lbl}>Cook Time &amp; Nutrition</label><div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>{[["cookTime","⏰ Min"],["calories","🔥 Cal"],["protein","💪 Pro"],["fat","🐄 Fat"],["carbs","🌾 Carb"]].map(([k,l])=><div key={k}><div style={{fontSize:11,color:C.textLight,marginBottom:4}}>{l}</div><input style={{...S.inp,textAlign:"center"}} type="number" value={form[k]} onChange={e=>set(k,e.target.value)} placeholder="0"/></div>)}</div></div>
         <div><label style={S.lbl}>Ingredients (one per line)</label><textarea style={{...S.inp,minHeight:120,resize:"vertical"}} value={form.ingredients} onChange={e=>set("ingredients",e.target.value)} placeholder={"1 lb salmon fillets\n2 tbsp olive oil\n1 lemon, sliced"}/></div>
         <div><label style={S.lbl}>Directions (one step per line)</label><textarea style={{...S.inp,minHeight:150,resize:"vertical"}} value={form.directions} onChange={e=>set("directions",e.target.value)} placeholder={"Preheat oven to 400°F.\nPlace salmon in baking dish.\nDrizzle with olive oil and season."}/></div>
         <div><label style={S.lbl}>Notes / Tips (optional)</label><input style={S.inp} value={form.note} onChange={e=>set("note",e.target.value)} placeholder="e.g. Can be made ahead, pairs well with asparagus."/></div>
@@ -215,7 +215,7 @@ function StarDishView({recipes,starId,onChangeStar,onView}){
         <div style={{fontSize:11,letterSpacing:3,textTransform:"uppercase",color:C.slateLight,marginBottom:6}}>{star.category}</div>
         <div style={{fontFamily:FD,fontSize:28,fontWeight:600,color:C.white,lineHeight:1.15,marginBottom:16}}>{star.name}</div>
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:18}}>
-          {[["⏰",star.cookTime+" min"],["🔥",star.calories+" cal"],["💪",star.protein+"g protein"],["🫒",star.fat+"g fat"]].map(([icon,val])=><div key={val} style={{textAlign:"center"}}><div style={{fontSize:18}}>{icon}</div><div style={{fontWeight:600,color:C.white,fontSize:15}}>{val}</div></div>)}
+          {[["⏰",star.cookTime+" min"],["🔥",star.calories+" cal"],["💪",star.protein+"g protein"],["🐄",star.fat+"g fat"]].map(([icon,val])=><div key={val} style={{textAlign:"center"}}><div style={{fontSize:18}}>{icon}</div><div style={{fontWeight:600,color:C.white,fontSize:15}}>{val}</div></div>)}
         </div>
         <div><div style={{fontSize:11,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight,marginBottom:8}}>Key ingredients</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(star.ingredients||[]).slice(0,8).map(i=><span key={i} style={{background:(star.perishable||[]).includes(i)?"rgba(196,118,58,.25)":"rgba(107,143,113,.25)",color:(star.perishable||[]).includes(i)?"#f0b87a":C.sageLight,border:`1px solid ${(star.perishable||[]).includes(i)?"rgba(196,118,58,.4)":"rgba(107,143,113,.4)"}`,borderRadius:20,padding:"3px 12px",fontSize:13}}>{i}{(star.perishable||[]).includes(i)?" 🕐":""}</span>)}</div>{(star.perishable||[]).length>0&&<div style={{fontSize:12,color:C.slateLight,marginTop:8,fontStyle:"italic"}}>🕐 Use these soon — they're perishable</div>}</div>
       </div>
