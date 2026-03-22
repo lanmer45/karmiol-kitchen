@@ -224,62 +224,147 @@ function StarDishView({recipes,starId,onChangeStar,onView}){
   );
 }
 
-const QZ=[
-  {id:"time",msg:"How much time do you have tonight?",opts:["Under 30 minutes","30 to 60 minutes","1 to 2 hours","All the time in the world"]},
-  {id:"mood",msg:"What's calling you right now?",opts:["Something light and fresh","Warm and comforting","Special and a little elegant","Just simple and good"]},
-  {id:"cat",msg:"Any category catching your eye?",opts:["Fish or seafood","Poultry","Meat","Vegetables","Soup or eggs","Dessert or drinks","Surprise me"]},
-  {id:"cal",msg:"Thinking about calories at all tonight?",opts:["Keep it light — under 250","Moderate — 250 to 400","Not tonight, I'm hungry","High protein is what matters"]},
-];
-
-function QuizView({recipes,onView}){
-  const[step,setStep]=useState(0);
-  const[ans,setAns]=useState({});
-  const[res,setRes]=useState(null);
-  const[typing,setTyping]=useState(true);
+function ChatView({recipes,onView}){
+  const GREET="Hey! Tell me what sounds good tonight — how much time you have, what you're in the mood for, ingredients on hand, anything. I'll find the right recipe.";
+  const[msgs,setMsgs]=useState([{role:"chef",text:GREET,results:null}]);
+  const[input,setInput]=useState("");
+  const[thinking,setThinking]=useState(false);
+  const[ctx,setCtx]=useState({});
   const endRef=useRef(null);
-  useEffect(()=>{setTyping(true);const t=setTimeout(()=>setTyping(false),600);return()=>clearTimeout(t)},[step]);
-  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[step,typing,res]);
-  const answer=(qi,oi)=>{
-    const na={...ans,[QZ[qi].id]:oi};setAns(na);
-    if(qi+1>=QZ.length){
-      const tm=[30,60,120,999][na.time??2];
-      const cm={0:["Fish & Seafood"],1:["Poultry"],2:["Meat"],3:["Vegetables & Sides"],4:["Soups","Eggs & Cheese"],5:["Desserts & Baked Goods","Drinks","Sauces & Marinades"],6:null};
-      let f=recipes.filter(r=>r.cookTime<=tm);
-      const cats=cm[na.cat??6];if(cats)f=f.filter(r=>cats.includes(r.category));
-      if(na.cal===0)f=f.filter(r=>r.calories<250);else if(na.cal===1)f=f.filter(r=>r.calories>=250&&r.calories<=400);else if(na.cal===3)f=f.filter(r=>r.protein>=25);
-      if(na.mood===0)f.sort((a,b)=>a.calories-b.calories);else if(na.mood===1)f.sort((a,b)=>b.calories-a.calories);else if(na.mood===2)f.sort((a,b)=>b.protein-a.protein);
-      setRes(f.slice(0,8));setStep(QZ.length);
-    }else setStep(qi+1);
+  const inputRef=useRef(null);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[msgs,thinking]);
+
+  const parse=(text,prevCtx)=>{
+    const lo=text.toLowerCase();
+    const next={...prevCtx};
+
+    if(/\b(reset|start over|forget it|never mind|clear|again)\b/.test(lo)) return {reset:true};
+
+    if(/\bunder 30|real(ly)? quick|super fast|asap|30 min|half hour|no time|\b15 min/.test(lo)) next.maxTime=30;
+    else if(/\ban? hour|60 min|hour(ish)?|moderate time/.test(lo)) next.maxTime=60;
+    else if(/couple (of )?hours?|1[–-]?2 hours?|slow cook|all (the )?time/.test(lo)) next.maxTime=120;
+    else if(/\bquick(er|ly)?\b/.test(lo)&&!next.maxTime) next.maxTime=45;
+
+    if(/\bfish\b|seafood|shrimp|crab|flounder|cod|salmon|turbot|shellfish|tuna/.test(lo)) next.cats=["Fish & Seafood"];
+    else if(/\bchicken\b|poultry|turkey/.test(lo)) next.cats=["Poultry"];
+    else if(/\bbeef\b|\bpork\b|\blamb\b|\bveal\b|\bmeat\b|goulash|meatball|roast/.test(lo)) next.cats=["Meat"];
+    else if(/\bveg(gie|etable)?s?\b|broccoli|zucchini|potato|asparagus|casserole|side dish/.test(lo)) next.cats=["Vegetables & Sides"];
+    else if(/\bsoup\b|broth|stew/.test(lo)) next.cats=["Soups"];
+    else if(/\begg\b|\bcheese\b|quiche/.test(lo)) next.cats=["Eggs & Cheese"];
+
+    if(/\blight\b|low.?cal|under 250|healthy|diet|slim|not (too )?heavy/.test(lo)) next.maxCal=250;
+    else if(/\bmoderate\b|medium cal|250.?400|not too (much|indulgent)/.test(lo)) next.maxCal=400;
+    else if(/hungry|indulg|comfort|rich|hearty|no limit/.test(lo)) { delete next.maxCal; }
+
+    if(/\bprotein\b|high protein|gains|gym/.test(lo)) next.minProt=25;
+
+    if(/\blight\b|fresh|low cal/.test(lo)) next.sort="cal_asc";
+    else if(/comfort|warm|hearty|filling|hungry/.test(lo)) next.sort="cal_desc";
+    else if(/protein/.test(lo)) next.sort="prot_desc";
+    else if(/quick(er)?|fast(er)?/.test(lo)) next.sort="time_asc";
+
+    const ingWords=lo.split(/\s+/).filter(w=>w.length>3);
+    const ingHits=recipes.filter(r=>(r.ingredients||[]).some(ing=>ingWords.some(w=>ing.toLowerCase().includes(w)))||(r.name.toLowerCase().split(" ").some(nw=>nw.length>3&&ingWords.includes(nw))));
+    if(ingHits.length>0&&ingHits.length<recipes.length*0.7) next.ingBoost=ingHits.map(r=>r.id);
+
+    return {next,reset:false};
   };
-  const reset=()=>{setStep(0);setAns({});setRes(null);setTyping(true)};
+
+  const filter=(ctx)=>{
+    let f=[...recipes];
+    if(ctx.maxTime) f=f.filter(r=>r.cookTime<=ctx.maxTime);
+    if(ctx.cats) f=f.filter(r=>ctx.cats.includes(r.category));
+    if(ctx.maxCal) f=f.filter(r=>r.calories<=ctx.maxCal);
+    if(ctx.minProt) f=f.filter(r=>r.protein>=ctx.minProt);
+    if(ctx.sort==="cal_asc") f.sort((a,b)=>a.calories-b.calories);
+    else if(ctx.sort==="cal_desc") f.sort((a,b)=>b.calories-a.calories);
+    else if(ctx.sort==="prot_desc") f.sort((a,b)=>b.protein-a.protein);
+    else if(ctx.sort==="time_asc") f.sort((a,b)=>a.cookTime-b.cookTime);
+    if(ctx.ingBoost){const s=new Set(ctx.ingBoost);f.sort((a,b)=>(s.has(b.id)?1:0)-(s.has(a.id)?1:0));}
+    return f.slice(0,6);
+  };
+
+  const reply=(newCtx,results,userText)=>{
+    const lo=userText.toLowerCase();
+    if(results.length===0) return "Nothing matched that exactly — want to loosen something? Try removing a filter or widening the time.";
+    const parts=[];
+    if(newCtx.maxTime&&newCtx.maxTime<999) parts.push(`under ${newCtx.maxTime} min`);
+    if(newCtx.cats) parts.push(newCtx.cats.join(" or ").toLowerCase());
+    if(newCtx.maxCal) parts.push(`under ${newCtx.maxCal} cal`);
+    const desc=parts.length?` (${parts.join(", ")})`:"";
+    if(results.length<=2) return `Just ${results.length}${desc} — pretty specific! Here${results.length===1?" it is":":"}`;
+    const openers=["Here's what I've got","These look good to me","Nice choices tonight","You've got options"];
+    return `${openers[Math.floor(Math.random()*openers.length)]}${desc}:`;
+  };
+
+  const send=()=>{
+    const text=input.trim();
+    if(!text||thinking) return;
+    setInput("");
+    setMsgs(prev=>[...prev,{role:"user",text,results:null}]);
+    setThinking(true);
+    setTimeout(()=>{
+      const {next,reset}=parse(text,ctx);
+      if(reset){
+        setCtx({});
+        setMsgs(prev=>[...prev,{role:"chef",text:"Starting fresh! "+GREET,results:null}]);
+        setThinking(false);
+        return;
+      }
+      const results=filter(next);
+      const responseText=reply(next,results,text);
+      setCtx(next);
+      setMsgs(prev=>[...prev,{role:"chef",text:responseText,results:results.length>0?results:null}]);
+      setThinking(false);
+    },650);
+  };
+
+  const handleKey=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
+  const avatarStyle={width:34,height:34,borderRadius:"50%",background:`linear-gradient(135deg,${C.slate},${C.navyMid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0};
+  const bubbleChef={background:`linear-gradient(135deg,${C.white},${C.slatePale})`,border:`1px solid ${C.slatePale}`,borderRadius:"4px 14px 14px 14px",padding:"12px 16px",maxWidth:"82%",boxShadow:"0 2px 8px rgba(44,62,80,.07)"};
+  const bubbleUser={background:`linear-gradient(135deg,${C.slate},${C.navyMid})`,borderRadius:"14px 4px 14px 14px",padding:"10px 16px",maxWidth:"72%",color:C.white,fontSize:14};
+  const CHIPS=["Something quick","Fish tonight","Comfort food","High protein","Under 300 cal","Surprise me"];
+
   return(
-    <div style={{maxWidth:580,margin:"0 auto"}}>
-      <div style={{fontFamily:FD,fontSize:26,fontWeight:600,color:C.navyDeep,marginBottom:6}}>Recipe Quiz</div>
-      <div style={{fontSize:14,color:C.textMid,marginBottom:24}}>Answer a few questions and I'll narrow it down for you.</div>
-      <div style={{display:"flex",flexDirection:"column",gap:18}}>
-        {QZ.slice(0,Math.min(step+1,QZ.length)).map((q,qi)=>(
-          <div key={qi}>
-            <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
-              <div style={{width:34,height:34,borderRadius:"50%",background:`linear-gradient(135deg,${C.slate},${C.navyMid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🍳</div>
-              <div style={{background:`linear-gradient(135deg,${C.white},${C.slatePale})`,border:`1px solid ${C.slatePale}`,borderRadius:"4px 14px 14px 14px",padding:"12px 16px",maxWidth:"82%",boxShadow:"0 2px 8px rgba(44,62,80,.07)"}}>
-                <div style={{fontFamily:FB,fontSize:15,color:C.navyDeep}}>{qi===step&&typing?<span style={{color:C.slateLight,letterSpacing:2}}>· · ·</span>:q.msg}</div>
+    <div style={{maxWidth:600,margin:"0 auto",display:"flex",flexDirection:"column",height:"calc(100vh - 210px)",minHeight:440}}>
+      <div style={{fontFamily:FD,fontSize:26,fontWeight:700,color:C.navyDeep,marginBottom:2}}>Chat</div>
+      <div style={{fontSize:13,color:C.textMid,marginBottom:14}}>Describe what you're after and I'll find the right recipe — you can keep refining.</div>
+      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:14,paddingBottom:8}}>
+        {msgs.map((msg,i)=>(
+          <div key={i}>
+            {msg.role==="chef"?(
+              <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                <div style={avatarStyle}>🍳</div>
+                <div style={bubbleChef}><div style={{fontSize:15,color:C.navyDeep,lineHeight:1.5}}>{msg.text}</div></div>
               </div>
-            </div>
-            {!(qi===step&&typing)&&(ans[q.id]!==undefined?
-              <div style={{display:"flex",justifyContent:"flex-end"}}><div style={{background:`linear-gradient(135deg,${C.slate},${C.navyMid})`,borderRadius:"14px 4px 14px 14px",padding:"10px 16px",maxWidth:"70%",color:C.white,fontSize:14}}>{q.opts[ans[q.id]]}</div></div>:
-              <div style={{paddingLeft:44,display:"flex",flexDirection:"column",gap:8}}>{q.opts.map((opt,oi)=><button key={oi} onClick={()=>answer(qi,oi)} style={{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:10,padding:"10px 16px",fontSize:14,color:C.navy,cursor:"pointer",textAlign:"left",fontFamily:FB,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.slatePale;e.currentTarget.style.borderColor=C.slateLight}} onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.slatePale}}>{opt}</button>)}</div>
+            ):(
+              <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <div style={bubbleUser}>{msg.text}</div>
+              </div>
+            )}
+            {msg.results&&(
+              <div style={{marginTop:10,paddingLeft:44,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+                {msg.results.map(r=><RecipeCard key={r.id} recipe={r} onClick={onView}/>)}
+              </div>
             )}
           </div>
         ))}
-        {res&&<div>
-          <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:18}}>
-            <div style={{width:34,height:34,borderRadius:"50%",background:`linear-gradient(135deg,${C.slate},${C.navyMid})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🍳</div>
-            <div style={{background:`linear-gradient(135deg,${C.white},${C.slatePale})`,border:`1px solid ${C.slatePale}`,borderRadius:"4px 14px 14px 14px",padding:"12px 16px",boxShadow:"0 2px 8px rgba(44,62,80,.07)"}}><div style={{fontSize:15,color:C.navyDeep,fontFamily:FB}}>{res.length>0?`Found ${res.length} recipes — click any to see the full recipe.`:"Nothing matched — try widening one of your choices?"}</div></div>
+        {thinking&&(
+          <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+            <div style={avatarStyle}>🍳</div>
+            <div style={{...bubbleChef,padding:"14px 18px"}}><span style={{color:C.slateLight,letterSpacing:4,fontSize:18}}>· · ·</span></div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14,marginBottom:16}}>{res.map(r=><RecipeCard key={r.id} recipe={r} onClick={onView}/>)}</div>
-          <button onClick={reset} style={S.btn("ghost")}>↩ Start over</button>
-        </div>}
+        )}
         <div ref={endRef}/>
+      </div>
+      {msgs.length<=1&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,paddingBottom:10}}>
+          {CHIPS.map(c=><button key={c} onClick={()=>{setInput(c);setTimeout(()=>inputRef.current?.focus(),0);}} style={{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:20,padding:"7px 14px",fontSize:13,color:C.navy,cursor:"pointer",fontFamily:FB}}>{c}</button>)}
+        </div>
+      )}
+      <div style={{display:"flex",gap:10,paddingTop:10,borderTop:`1px solid ${C.slatePale}`}}>
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} placeholder="e.g. quick fish dish, under 300 calories…" style={{flex:1,padding:"12px 16px",borderRadius:12,border:`1px solid ${C.slatePale}`,fontSize:14,fontFamily:FB,color:C.text,outline:"none",background:C.white}}/>
+        <button onClick={send} disabled={thinking||!input.trim()} style={{...S.btn("sage"),padding:"12px 20px",borderRadius:12,flexShrink:0,opacity:thinking||!input.trim()?0.5:1}}>Send ↑</button>
       </div>
     </div>
   );
@@ -401,11 +486,10 @@ export default function App(){
     else alert("Could not delete — is the server running?");
   },[]);
 
-  const TABS=[{id:"star",label:"⭐  Star Dish"},{id:"quiz",label:"🎲  Quiz"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
+  const TABS=[{id:"star",label:"⭐  Star Dish"},{id:"quiz",label:"💬  Chat"},{id:"search",label:"🔍  Search"},{id:"fridge",label:"🧊  Fridge"},{id:"pairs",label:"🍽  Pairings"}];
 
   return(
     <div style={S.page}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lora:wght@400;500&display=swap" rel="stylesheet"/>
       <div style={S.hdr}>
         <div style={{maxWidth:760,margin:"0 auto",display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}}>
           <div>
@@ -427,7 +511,7 @@ export default function App(){
          view?.type==="add"?<AddRecipeForm onSave={onSave} onCancel={()=>setView(null)}/>:
          <>
            {tab==="star"&&<StarDishView recipes={recipes} starId={starId} onChangeStar={()=>setPicker(true)} onView={onView}/>}
-           {tab==="quiz"&&<QuizView recipes={recipes} onView={onView}/>}
+           {tab==="quiz"&&<ChatView recipes={recipes} onView={onView}/>}
            {tab==="search"&&<SearchView recipes={recipes} onView={onView}/>}
            {tab==="fridge"&&<FridgeView recipes={recipes} onView={onView}/>}
            {tab==="pairs"&&<PairingsView recipes={recipes} onView={onView}/>}
