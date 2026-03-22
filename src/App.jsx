@@ -573,21 +573,27 @@ const catIngredient=ing=>{
 };
 
 function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
-  const[pickerSlot,setPickerSlot]=useState(null);
+  const[picker,setPicker]=useState(null);
   const[copied,setCopied]=useState(false);
   const[groceryList,setGroceryList]=useState(null);
   const[groceryLoading,setGroceryLoading]=useState(false);
   const[groceryErr,setGroceryErr]=useState("");
   const DAYS=["Monday","Tuesday","Wednesday","Thursday","(Optional 5th)"];
-  const filledCount=weekPlan.filter(Boolean).length;
+
+  const getMeal=id=>id?recipes.find(r=>String(r.id)===String(id)):null;
+  const getDay=slot=>weekPlan[slot]||[];
+  const getMain=slot=>getMeal(getDay(slot)[0]);
+  const getDaySides=slot=>getDay(slot).slice(1).map(getMeal).filter(Boolean);
+
+  const filledCount=weekPlan.filter(d=>(d||[]).length>0).length;
   const show5=weekPlan.length>=5||filledCount>=4;
   const slots=[0,1,2,3,...(show5?[4]:[])];
-  const getMeal=id=>id?recipes.find(r=>String(r.id)===String(id)):null;
-  const meals=weekPlan.map(getMeal).filter(Boolean);
-  const star=getMeal(weekPlan[0]);
-  const exclude=weekPlan.filter(Boolean).map(String);
+  const meals=weekPlan.flatMap(d=>(d||[]).map(getMeal).filter(Boolean));
+  const star=getMain(0);
+  const exclude=weekPlan.flatMap(d=>(d||[]).filter(Boolean).map(String));
 
-  const planKey=weekPlan.filter(Boolean).sort().join(",");
+  const planKey=weekPlan.flatMap(d=>d||[]).sort().join(",");
+  const[aiList,setAiList]=useState(false);
   useEffect(()=>{setGroceryList(null);setGroceryErr("");setAiList(false);},[planKey]);
 
   const suggestions=star?recipes
@@ -597,11 +603,35 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
     .sort((a,b)=>b.shared.length-a.shared.length)
     .slice(0,6):[];
 
-  const setMeal=(slot,id)=>{const p=[...weekPlan];while(p.length<=slot)p.push(null);p[slot]=id;onSetPlan(p);setPickerSlot(null);};
-  const removeMeal=slot=>{const p=[...weekPlan];p[slot]=null;while(p.length&&!p[p.length-1])p.pop();onSetPlan(p);};
-  const addSuggestion=id=>{const idx=weekPlan.findIndex(x=>!x);if(idx>=0)setMeal(idx,id);else if(weekPlan.length<5)setMeal(weekPlan.length,id);};
+  const setMain=(slot,id)=>{
+    const p=weekPlan.map(d=>[...(d||[])]);
+    while(p.length<=slot)p.push([]);
+    p[slot]=[id,...(p[slot]||[]).slice(1)];
+    onSetPlan(p);setPicker(null);
+  };
+  const removeDay=slot=>{
+    const p=weekPlan.map(d=>[...(d||[])]);
+    p[slot]=[];
+    while(p.length&&(p[p.length-1]||[]).length===0)p.pop();
+    onSetPlan(p);
+  };
+  const addSide=(slot,id)=>{
+    const p=weekPlan.map(d=>[...(d||[])]);
+    while(p.length<=slot)p.push([]);
+    p[slot]=[...(p[slot]||[]),id];
+    onSetPlan(p);setPicker(null);
+  };
+  const removeSide=(slot,sideIdx)=>{
+    const p=weekPlan.map(d=>[...(d||[])]);
+    p[slot]=p[slot].filter((_,i)=>i!==sideIdx+1);
+    onSetPlan(p);
+  };
+  const addSuggestion=id=>{
+    const idx=weekPlan.findIndex(d=>(d||[]).length===0);
+    if(idx>=0)setMain(idx,id);
+    else if(weekPlan.length<5)setMain(weekPlan.length,id);
+  };
 
-  const[aiList,setAiList]=useState(false);
   const generateList=async()=>{
     setGroceryLoading(true);setGroceryErr("");
     try{
@@ -629,43 +659,54 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
     <div>
       <div style={{marginBottom:24}}>
         <div style={{fontFamily:FD,fontSize:26,fontWeight:600,color:C.navyDeep,marginBottom:4}}>This Week</div>
-        <div style={{fontSize:14,color:C.textMid}}>Mon – Thu dinners. Set a star dish and we'll suggest meals that share ingredients to cut waste.</div>
+        <div style={{fontSize:14,color:C.textMid}}>Mon – Thu dinners. Add a main dish and sides per day — all roll up into your grocery list.</div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:12,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12,marginBottom:28}}>
         {slots.map(slot=>{
-          const meal=getMeal(weekPlan[slot]);
+          const main=getMain(slot);
+          const sides=getDaySides(slot);
           const isStar=slot===0;
           return(
-            <div key={slot} style={{borderRadius:12,border:`1.5px solid ${meal?C.slatePale:"#e5e5e5"}`,background:meal?C.white:"#fafafa",padding:"14px 16px",minHeight:120,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                  <span style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight}}>{DAYS[slot]}</span>
-                  {isStar&&<span style={{fontSize:10,background:"rgba(200,184,154,.18)",color:C.gold,border:`1px solid rgba(200,184,154,.4)`,borderRadius:10,padding:"1px 7px",fontWeight:600,letterSpacing:.5}}>star</span>}
-                </div>
-                {meal?(
-                  <>
-                    <div onClick={()=>onView(meal)} style={{fontSize:13,fontWeight:600,color:C.navyDeep,lineHeight:1.35,marginBottom:4,cursor:"pointer"}}>{meal.name}</div>
-                    <div style={{fontSize:11,color:C.textLight,marginBottom:10}}>{meal.category} · ⏰ {meal.cookTime} min</div>
-                  </>
-                ):(
-                  <div style={{height:40}}/>
-                )}
+            <div key={slot} style={{borderRadius:12,border:`1.5px solid ${main?C.slatePale:"#e5e5e5"}`,background:main?C.white:"#fafafa",padding:"14px 16px",minHeight:120,display:"flex",flexDirection:"column",gap:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                <span style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:C.slateLight}}>{DAYS[slot]}</span>
+                {isStar&&<span style={{fontSize:10,background:"rgba(200,184,154,.18)",color:C.gold,border:`1px solid rgba(200,184,154,.4)`,borderRadius:10,padding:"1px 7px",fontWeight:600,letterSpacing:.5}}>star</span>}
               </div>
-              {meal?(
-                <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>setPickerSlot(slot)} style={{...S.btn("ghost"),fontSize:11,padding:"4px 10px"}}>Change</button>
-                  <button onClick={()=>removeMeal(slot)} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:`1px solid #e5e5e5`,background:"transparent",cursor:"pointer",color:C.textLight}}>✕</button>
-                </div>
+
+              {main?(
+                <>
+                  <div style={{marginBottom:6}}>
+                    <div onClick={()=>onView(main)} style={{fontSize:13,fontWeight:600,color:C.navyDeep,lineHeight:1.35,marginBottom:2,cursor:"pointer"}}>{main.name}</div>
+                    <div style={{fontSize:11,color:C.textLight}}>{main.category} · ⏰ {main.cookTime} min</div>
+                  </div>
+
+                  {sides.length>0&&(
+                    <div style={{borderTop:`1px solid ${C.slatePale}`,marginTop:6,paddingTop:6,display:"flex",flexDirection:"column",gap:4}}>
+                      {sides.map((side,si)=>(
+                        <div key={side.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4}}>
+                          <div onClick={()=>onView(side)} style={{fontSize:12,color:C.navyDeep,cursor:"pointer",lineHeight:1.3,flex:1}}>+ {side.name}</div>
+                          <button onClick={()=>removeSide(slot,si)} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:`1px solid #e5e5e5`,background:"transparent",cursor:"pointer",color:C.textLight,flexShrink:0}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{display:"flex",gap:6,marginTop:"auto",paddingTop:10}}>
+                    <button onClick={()=>setPicker({slot,mode:"main"})} style={{...S.btn("ghost"),fontSize:11,padding:"4px 10px"}}>Change</button>
+                    <button onClick={()=>setPicker({slot,mode:"side"})} style={{...S.btn("ghost"),fontSize:11,padding:"4px 10px"}}>+ Side</button>
+                    <button onClick={()=>removeDay(slot)} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:`1px solid #e5e5e5`,background:"transparent",cursor:"pointer",color:C.textLight,marginLeft:"auto"}}>✕</button>
+                  </div>
+                </>
               ):(
-                <button onClick={()=>setPickerSlot(slot)} style={{width:"100%",padding:"10px 0",borderRadius:8,border:`1.5px dashed ${C.slatePale}`,background:"transparent",cursor:"pointer",fontSize:13,color:C.slateLight}}>+ Pick a meal</button>
+                <button onClick={()=>setPicker({slot,mode:"main"})} style={{width:"100%",padding:"10px 0",borderRadius:8,border:`1.5px dashed ${C.slatePale}`,background:"transparent",cursor:"pointer",fontSize:13,color:C.slateLight,marginTop:"auto"}}>+ Pick a meal</button>
               )}
             </div>
           );
         })}
         {!show5&&filledCount>0&&(
           <div style={{borderRadius:12,border:`1.5px dashed #e5e5e5`,background:"transparent",padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <button onClick={()=>{const p=[...weekPlan];while(p.length<5)p.push(null);onSetPlan(p);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.slateLight}}>+ 5th meal</button>
+            <button onClick={()=>{const p=weekPlan.map(d=>[...(d||[])]);while(p.length<5)p.push([]);onSetPlan(p);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.slateLight}}>+ 5th meal</button>
           </div>
         )}
       </div>
@@ -733,7 +774,7 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
         </div>
       )}
 
-      {pickerSlot!==null&&<MealPicker recipes={recipes} exclude={exclude} onPick={id=>setMeal(pickerSlot,id)} onClose={()=>setPickerSlot(null)}/>}
+      {picker!==null&&<MealPicker recipes={recipes} exclude={exclude} onPick={id=>picker.mode==="side"?addSide(picker.slot,id):setMain(picker.slot,id)} onClose={()=>setPicker(null)}/>}
     </div>
   );
 }
@@ -741,7 +782,11 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
 export default function App(){
   const[recipes,setRecipes]=useState(RECIPES);
   const[tab,setTab]=useState("star");
-  const[weekPlan,setWeekPlanRaw]=useState(()=>{try{return JSON.parse(localStorage.getItem("weekPlan"))||[String(RECIPES[9].id)];}catch{return[String(RECIPES[9].id)];}});
+  const migrateWeekPlan=raw=>{
+    if(!Array.isArray(raw))return[[String(RECIPES[9].id)]];
+    return raw.map(item=>Array.isArray(item)?item:(item?[item]:[]));
+  };
+  const[weekPlan,setWeekPlanRaw]=useState(()=>{try{return migrateWeekPlan(JSON.parse(localStorage.getItem("weekPlan")));}catch{return[[String(RECIPES[9].id)]];}}); 
   const setWeekPlan=p=>{setWeekPlanRaw(p);try{localStorage.setItem("weekPlan",JSON.stringify(p));}catch{}};
   const[view,setView]=useState(null);
   const[loading,setLoading]=useState(true);
