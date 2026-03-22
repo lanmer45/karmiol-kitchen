@@ -575,6 +575,9 @@ const catIngredient=ing=>{
 function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
   const[pickerSlot,setPickerSlot]=useState(null);
   const[copied,setCopied]=useState(false);
+  const[groceryList,setGroceryList]=useState(null);
+  const[groceryLoading,setGroceryLoading]=useState(false);
+  const[groceryErr,setGroceryErr]=useState("");
   const DAYS=["Monday","Tuesday","Wednesday","Thursday","(Optional 5th)"];
   const filledCount=weekPlan.filter(Boolean).length;
   const show5=weekPlan.length>=5||filledCount>=4;
@@ -584,6 +587,9 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
   const star=getMeal(weekPlan[0]);
   const exclude=weekPlan.filter(Boolean).map(String);
 
+  const planKey=weekPlan.filter(Boolean).sort().join(",");
+  useEffect(()=>{setGroceryList(null);setGroceryErr("");},[planKey]);
+
   const suggestions=star?recipes
     .filter(r=>!exclude.includes(String(r.id)))
     .map(r=>{const shared=(r.ingredients||[]).filter(i=>(star.ingredients||[]).includes(i));return{...r,shared};})
@@ -591,18 +597,25 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
     .sort((a,b)=>b.shared.length-a.shared.length)
     .slice(0,6):[];
 
-  const allIngredients=[...new Set(meals.flatMap(r=>r.ingredients||[]).map(i=>i.toLowerCase().trim()))];
-  const grouped={produce:[],meat:[],dairy:[],pantry:[]};
-  allIngredients.forEach(ing=>grouped[catIngredient(ing)].push(ing));
-
   const setMeal=(slot,id)=>{const p=[...weekPlan];while(p.length<=slot)p.push(null);p[slot]=id;onSetPlan(p);setPickerSlot(null);};
   const removeMeal=slot=>{const p=[...weekPlan];p[slot]=null;while(p.length&&!p[p.length-1])p.pop();onSetPlan(p);};
   const addSuggestion=id=>{const idx=weekPlan.findIndex(x=>!x);if(idx>=0)setMeal(idx,id);else if(weekPlan.length<5)setMeal(weekPlan.length,id);};
 
+  const generateList=async()=>{
+    setGroceryLoading(true);setGroceryErr("");
+    try{
+      const r=await fetch("/api/grocery-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipes:meals})});
+      if(!r.ok)throw new Error("Server error");
+      setGroceryList(await r.json());
+    }catch(e){setGroceryErr("Couldn't generate list — try again.");}
+    setGroceryLoading(false);
+  };
+
+  const listData=groceryList||{};
   const copyList=()=>{
-    const text=[["PRODUCE",grouped.produce],["MEAT & SEAFOOD",grouped.meat],["DAIRY & EGGS",grouped.dairy],["PANTRY",grouped.pantry]]
-      .filter(([,items])=>items.length>0).map(([title,items])=>`${title}\n${items.join("\n")}`).join("\n\n");
-    navigator.clipboard.writeText(text);
+    const sections=[["PRODUCE",listData.produce],["MEAT & SEAFOOD",listData.meat],["DAIRY & EGGS",listData.dairy],["PANTRY",listData.pantry]]
+      .filter(([,items])=>items?.length>0).map(([title,items])=>`${title}\n${items.join("\n")}`).join("\n\n");
+    navigator.clipboard.writeText(sections);
     setCopied(true);setTimeout(()=>setCopied(false),2500);
   };
 
@@ -669,20 +682,46 @@ function WeeklyPlanView({recipes,weekPlan,onSetPlan,onView}){
 
       {meals.length>0&&(
         <div style={{background:C.white,border:`1px solid ${C.slatePale}`,borderRadius:14,padding:"20px 24px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-            <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep}}>Grocery List</div>
-            <button onClick={copyList} style={{...S.btn(copied?"sage":"ghost"),fontSize:13,padding:"7px 16px",transition:"all .2s"}}>{copied?"✓ Copied!":"Copy list"}</button>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,gap:12,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontFamily:FD,fontSize:20,fontWeight:600,color:C.navyDeep}}>Grocery List</div>
+              {!groceryList&&!groceryLoading&&<div style={{fontSize:12,color:C.textLight,marginTop:2}}>Quantities included — generates in a few seconds</div>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              {groceryList&&<button onClick={copyList} style={{...S.btn(copied?"sage":"ghost"),fontSize:13,padding:"7px 16px"}}>{copied?"✓ Copied!":"Copy list"}</button>}
+              <button onClick={generateList} disabled={groceryLoading} style={{...S.btn("sage"),fontSize:13,padding:"7px 16px",opacity:groceryLoading?.7:1}}>
+                {groceryLoading?"Building list…":groceryList?"Regenerate":"Build list"}
+              </button>
+            </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:20}}>
-            {[["Produce",grouped.produce,C.sage],["Meat & Seafood",grouped.meat,C.warn],["Dairy & Eggs",grouped.dairy,C.slate],["Pantry",grouped.pantry,C.stone]].filter(([,items])=>items.length>0).map(([title,items,color])=>(
-              <div key={title}>
-                <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color,marginBottom:8,borderBottom:`1px solid ${C.slatePale}`,paddingBottom:6}}>{title}</div>
-                <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                  {items.map(ing=><div key={ing} style={{fontSize:13,color:C.text,display:"flex",alignItems:"center",gap:6}}><span style={{color:C.slatePale,fontSize:10}}>—</span>{ing}</div>)}
+          {groceryErr&&<div style={{color:C.warn,fontSize:13,marginBottom:12}}>{groceryErr}</div>}
+          {groceryLoading&&<div style={{textAlign:"center",padding:"32px 0",color:C.textLight,fontSize:14,fontStyle:"italic"}}>Calculating quantities for {meals.length} meal{meals.length>1?"s":""}…</div>}
+          {groceryList&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:20}}>
+              {[["Produce",listData.produce,C.sage],["Meat & Seafood",listData.meat,C.warn],["Dairy & Eggs",listData.dairy,C.slate],["Pantry",listData.pantry,C.stone]].filter(([,items])=>items?.length>0).map(([title,items,color])=>(
+                <div key={title}>
+                  <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color,marginBottom:8,borderBottom:`1px solid ${C.slatePale}`,paddingBottom:6}}>{title}</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {items.map((line,i)=>{
+                      const [ing,...rest]=line.split("—");
+                      const qty=rest.join("—").trim();
+                      return(
+                        <div key={i} style={{fontSize:13,color:C.text,display:"flex",justifyContent:"space-between",gap:8,alignItems:"baseline"}}>
+                          <span>{ing.trim()}</span>
+                          {qty&&<span style={{fontSize:12,color:C.textLight,flexShrink:0}}>{qty}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+          {!groceryList&&!groceryLoading&&(
+            <div style={{textAlign:"center",padding:"28px 0",color:C.textLight,fontSize:14}}>
+              Hit "Build list" to get a consolidated grocery list with quantities.
+            </div>
+          )}
         </div>
       )}
 

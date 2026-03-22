@@ -154,6 +154,40 @@ If nutrition is not visible, estimate reasonably. Return only the JSON object, n
   }
 });
 
+// ── AI Grocery List with quantities ─────────────────────────────────────────
+app.post("/api/grocery-list", async (req, res) => {
+  try {
+    const { recipes } = req.body;
+    const { OpenAI } = await import("openai");
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const recipeList = recipes.map(r =>
+      `${r.name} (serves ${r.serves||2}): ${(r.ingredients||[]).join(", ")}`
+    ).join("\n");
+    const prompt = `You are a meal prep assistant for a household of 2. Given these recipes planned for this week, produce a consolidated grocery list with realistic quantities.
+
+Recipes:
+${recipeList}
+
+Rules:
+- Each recipe serves 2 people
+- Combine quantities when the same ingredient appears in multiple recipes (e.g. if two recipes each need butter, total it)
+- Use practical grocery quantities: lbs, oz, bunches, cans, cups, tbsp, tsp, heads, cloves, etc.
+- Pantry staples that most people have (salt, pepper, basic flour, sugar) can be omitted unless a large amount is needed
+- Format each item as: "ingredient — quantity"
+
+Return a JSON object with exactly these keys: produce, meat, dairy, pantry
+Each value is an array of strings.`;
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    });
+    res.json(JSON.parse(resp.choices[0].message.content));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Seed built-in recipes (run once) ────────────────────────────────────────
 app.post("/api/seed", async (req, res) => {
   try {
